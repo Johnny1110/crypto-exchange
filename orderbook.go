@@ -21,6 +21,10 @@ type Order struct {
 	Timestamp int64  // unix nano seconds
 }
 
+func (o *Order) IsFilled() bool {
+	return o.Size == 0.0
+}
+
 func (o *Order) String() string {
 	return "Order{" +
 		"Size: " + fmt.Sprintf("%f", o.Size) +
@@ -44,20 +48,67 @@ type Limit struct {
 	TotalVolume float64
 }
 
-func (limit *Limit) FillOrder(inputOrder *Order) []Match {
-	matches := []Match{}
+func (limit *Limit) FillOrder(inputMarketOrder *Order) []Match {
+	var (
+		matches        []Match
+		ordersToDelete []*Order
+	)
 
-	for _, existingOrder := range limit.Orders {
-		match := limit.fillOrder(existingOrder, inputOrder)
+	for _, existingLimitOrder := range limit.Orders {
+		match := limit.fillOrder(existingLimitOrder, inputMarketOrder)
 		matches = append(matches, match)
+
+		limit.TotalVolume -= match.SizeFilled
+
+		if existingLimitOrder.IsFilled() {
+			ordersToDelete = append(ordersToDelete, existingLimitOrder)
+		}
+
+		if inputMarketOrder.IsFilled() {
+			break
+		}
+	}
+
+	// delete the filled limit orders
+	for _, filledLimitOrder := range ordersToDelete {
+		fmt.Println("Deleting order:", filledLimitOrder, " Bid:", filledLimitOrder.Bid, " Size:", filledLimitOrder.Size, " Price:", filledLimitOrder.Limit.Price)
+		limit.DeleteOrder(filledLimitOrder)
 	}
 
 	return matches
 }
 
 func (limit *Limit) fillOrder(orderA, orderB *Order) Match {
-	// TODO: implement the logic to fill the order (2025/04/12)
-	panic("unimplemented")
+	var (
+		ask        *Order
+		bid        *Order
+		sizeFilled float64
+	)
+
+	if orderA.Bid {
+		bid = orderA
+		ask = orderB
+	} else {
+		bid = orderB
+		ask = orderA
+	}
+
+	if bid.Size >= ask.Size {
+		bid.Size -= ask.Size
+		sizeFilled = ask.Size
+		ask.Size = 0.0
+	} else {
+		ask.Size -= bid.Size
+		sizeFilled = bid.Size
+		bid.Size = 0.0
+	}
+
+	return Match{
+		Bid:        bid,
+		Ask:        ask,
+		SizeFilled: sizeFilled,
+		Price:      limit.Price,
+	}
 }
 
 func (limit *Limit) String() string {
@@ -137,15 +188,49 @@ func (orderBook *OrderBook) PlaceLimitOrder(price float64, order *Order) {
 
 func (orderBook *OrderBook) PlaceMarketOrder(order *Order) []Match {
 	var matches = make([]Match, 0)
+	var limitToDelete = make([]*Limit, 0)
 
 	if order.Bid {
 		// buy order need looking for ask limits (Asks() will be ordered by price)
+		if order.Size > orderBook.AskTotalVolume() {
+			panic(fmt.Errorf("Not enough ask vloume [size: %.2f] to fill market order [size: %.2f]", orderBook.AskTotalVolume(), order.Size))
+		}
+
 		for _, limit := range orderBook.Asks() {
-			matches = limit.FillOrder(order)
+			matches = append(matches, limit.FillOrder(order)...)
+
+			if len(limit.Orders) == 0 {
+				limitToDelete = append(limitToDelete, limit)
+			}
+
+			if order.IsFilled() {
+				break
+			}
+		}
+
+		for _, limit := range limitToDelete {
+			orderBook.clearLimit(false, limit)
 		}
 
 	} else {
+		// sell order need looking for bid limits (Bids() will be ordered by price)
+		if (order.Size) > orderBook.BidTotalVolume() {
+			panic(fmt.Errorf("Not enough bid vloume [size: %.2f] to fill market order [size: %.2f]", orderBook.BidTotalVolume(), order.Size))
+		}
+		for _, limit := range orderBook.Bids() {
+			matches = append(matches, limit.FillOrder(order)...)
 
+			if len(limit.Orders) == 0 {
+				limitToDelete = append(limitToDelete, limit)
+			}
+			if order.IsFilled() {
+				break
+			}
+		}
+
+		for _, limit := range limitToDelete {
+			orderBook.clearLimit(true, limit)
+		}
 	}
 
 	return matches
@@ -159,6 +244,48 @@ func (ob *OrderBook) Asks() []*Limit {
 func (ob *OrderBook) Bids() []*Limit {
 	sort.Sort(ByBestBid{ob.bids})
 	return ob.bids
+}
+
+func (ob *OrderBook) BidTotalVolume() float64 {
+	totalVolumne := 0.0
+	for _, limit := range ob.bids {
+		totalVolumne += limit.TotalVolume
+	}
+	return totalVolumne
+}
+
+func (ob *OrderBook) AskTotalVolume() float64 {
+	totalVolumne := 0.0
+	for _, limit := range ob.asks {
+		totalVolumne += limit.TotalVolume
+	}
+	return totalVolumne
+}
+
+func (ob *OrderBook) clearLimit(bid bool, limit *Limit) {
+	if bid {
+		delete(ob.BidLimits, limit.Price)
+		// remove limit from orderbook.bids
+		for i := 0; i < len(ob.bids); i++ {
+			if ob.bids[i] == limit {
+				// remove the limit from the slice
+				ob.bids = append(ob.bids[:i], ob.bids[i+1:]...)
+				break
+			}
+		}
+	} else {
+		delete(ob.AskLimits, limit.Price)
+		// remove limit from orderbook.asks
+		for i := 0; i < len(ob.asks); i++ {
+			if ob.asks[i] == limit {
+				// remove the limit from the slice
+				ob.asks = append(ob.asks[:i], ob.asks[i+1:]...)
+				break
+			}
+		}
+
+	}
+
 }
 
 // ------------------------------------------------------------------------
