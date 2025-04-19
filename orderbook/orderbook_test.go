@@ -1,4 +1,4 @@
-package main
+package orderbook
 
 import (
 	"fmt"
@@ -89,4 +89,20 @@ func TestPlaceMarketOrderMultiFill(t *testing.T) {
 	fmt.Printf("the bids left: %+v\n", ob.bids)
 	fmt.Printf("the bidLimits left: %+v\n", ob.BidLimits)
 	assert(t, len(ob.bids), 1)
+}
+
+func TestCancelOrder(t *testing.T) {
+	ob := NewOrderBook()
+	buyOrderA := NewOrder(true, 5)
+
+	ob.PlaceLimitOrder(10_000, buyOrderA)
+
+	assert(t, len(ob.bids), 1)
+	assert(t, len(ob.BidLimits), 1)
+	assert(t, ob.BidTotalVolume(), 5.0)
+
+	ob.CancelOrder(buyOrderA)
+	assert(t, len(ob.bids), 0)
+	assert(t, ob.BidTotalVolume(), 0.0)
+	assert(t, len(ob.BidLimits), 0)
 }

@@ -1,4 +1,4 @@
-package main
+package orderbook
 
 import (
 	"fmt"
@@ -286,6 +286,14 @@ func (ob *OrderBook) clearLimit(bid bool, limit *Limit) {
 
 	}
 
+}
+
+func (ob *OrderBook) CancelOrder(order *Order) {
+	limit := order.Limit
+	limit.DeleteOrder(order)
+	if len(limit.Orders) == 0 {
+		ob.clearLimit(order.Bid, limit)
+	}
 }
 
 // ------------------------------------------------------------------------
