@@ -25,3 +25,5 @@ How to create a cryptocurrency exchange from scratch -- Anthony GG
 2025/04/13 [EP2](https://youtu.be/SvitKOkJmm8?list=PL0xRBLFXXsP5Q_a9FjmDfgtWatLHJVxGn&t=5155s): 1:26:00
 
 2025/04/19 [EP3](https://youtu.be/oE8TPzDIzLY?list=PL0xRBLFXXsP5Q_a9FjmDfgtWatLHJVxGn&t=1851) 30:50
+
+2025/04/20 [EP4](https://youtu.be/xpXT127JXEU?list=PL0xRBLFXXsP5Q_a9FjmDfgtWatLHJVxGn&t=32) 00:30
