@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type Market string
@@ -73,7 +74,29 @@ func (ex *Exchange) HandlePlaceOrder(c echo.Context) error {
 		}
 	case MarketOrder:
 		matches := ob.PlaceMarketOrder(order)
-		return c.JSON(http.StatusOK, map[string]any{"matches": "market order matches " + strconv.Itoa(len(matches))})
+
+		respMatchOrders := make([]*Order, 0, len(matches))
+		for _, match := range matches {
+			// extract match order bid or ask
+			isBid := !placeOrderData.Bid
+			// extract match order's ID
+			var matchOrderId int64 = 0
+			if isBid {
+				matchOrderId = match.Bid.ID
+			} else {
+				matchOrderId = match.Ask.ID
+			}
+
+			respMatchOrders = append(respMatchOrders, &Order{
+				Price:     match.Price,
+				Size:      match.SizeFilled,
+				Timestamp: time.Now().UnixNano(),
+				Bid:       isBid,
+				ID:        matchOrderId,
+			})
+		}
+
+		return c.JSON(http.StatusOK, map[string]any{"matches": respMatchOrders})
 	default:
 		return c.JSON(http.StatusBadRequest, map[string]any{"msg": "missing order type"})
 	}

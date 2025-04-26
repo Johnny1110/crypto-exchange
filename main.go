@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/johnny1110/crypto-exchange/exchange"
 	"github.com/labstack/echo/v4"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 
 func main() {
 	e := echo.New()
+	e.HTTPErrorHandler = httpErrorHandler
 
 	ex := exchange.NewExchange()
 	ex.InitOrderbooks()
@@ -18,4 +20,8 @@ func main() {
 	e.GET("/orderbook/:market/orderIds", ex.HandleGetOrderIds)
 
 	e.Start(":3000")
+}
+
+func httpErrorHandler(err error, c echo.Context) {
+	fmt.Println(err)
 }

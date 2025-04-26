@@ -8,10 +8,10 @@ import (
 )
 
 type Match struct {
-	Ask        *Order
-	Bid        *Order
-	SizeFilled float64
-	Price      float64
+	Ask        *Order  `json:"ask"`
+	Bid        *Order  `json:"bid"`
+	SizeFilled float64 `json:"size_filled"`
+	Price      float64 `json:"price"`
 }
 
 // <Order> ----------------------------------------------------------
@@ -75,7 +75,7 @@ func (limit *Limit) FillOrder(inputMarketOrder *Order) []Match {
 	// delete the filled limit orders
 	for _, filledLimitOrder := range ordersToDelete {
 		fmt.Println("Deleting order:", filledLimitOrder, " Bid:", filledLimitOrder.Bid, " Size:", filledLimitOrder.Size, " Price:", filledLimitOrder.Limit.Price)
-		limit.DeleteOrder(filledLimitOrder)
+		limit.deleteOrder(filledLimitOrder)
 	}
 
 	return matches
@@ -132,7 +132,7 @@ func (l *Limit) AddOrder(o *Order) {
 	l.TotalVolume += o.Size
 }
 
-func (l *Limit) DeleteOrder(o *Order) {
+func (l *Limit) deleteOrder(o *Order) {
 	for i := 0; i < len(l.Orders); i++ {
 		if l.Orders[i] == o {
 			// remove the order from the slice
@@ -316,7 +316,7 @@ func (ob *OrderBook) clearLimit(bid bool, limit *Limit) {
 
 func (ob *OrderBook) CancelOrder(order *Order) {
 	limit := order.Limit
-	limit.DeleteOrder(order)
+	limit.deleteOrder(order)
 	if len(limit.Orders) == 0 {
 		ob.clearLimit(order.Bid, limit)
 	}

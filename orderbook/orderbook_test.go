@@ -24,7 +24,7 @@ func TestLimit(t *testing.T) {
 	limit.AddOrder(buyOrderC)
 	limit.AddOrder(buyOrderD)
 
-	limit.DeleteOrder(buyOrderB)
+	limit.deleteOrder(buyOrderB)
 
 	fmt.Println(limit)
 	fmt.Println(limit.Orders)
@@ -42,6 +42,11 @@ func TestPlaceLimitOrder(t *testing.T) {
 	orderBook.PlaceLimitOrder(11_000, sellOrderC)
 
 	assert(t, len(orderBook.asks), 2)
+	assert(t, len(orderBook.limitOrderIdMap), 3)
+	assert(t, orderBook.limitOrderIdMap[sellOrderA.ID], sellOrderA)
+	assert(t, orderBook.limitOrderIdMap[sellOrderB.ID], sellOrderB)
+	assert(t, orderBook.limitOrderIdMap[sellOrderC.ID], sellOrderC)
+
 }
 
 func TestPlaceMarketOrder(t *testing.T) {
@@ -105,4 +110,7 @@ func TestCancelOrder(t *testing.T) {
 	assert(t, len(ob.bids), 0)
 	assert(t, ob.BidTotalVolume(), 0.0)
 	assert(t, len(ob.BidLimits), 0)
+
+	_, ok := ob.limitOrderIdMap[buyOrderA.ID]
+	assert(t, ok, false)
 }
