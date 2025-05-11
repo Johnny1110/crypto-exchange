@@ -3,11 +3,12 @@ package exchange
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/johnny1110/crypto-exchange/orderbook"
-	"github.com/labstack/echo/v4"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/johnny1110/crypto-exchange/orderbook"
+	"github.com/labstack/echo/v4"
 )
 
 type Market string
@@ -77,7 +78,7 @@ func (ex *Exchange) HandlePlaceOrder(c echo.Context) error {
 
 		respMatchOrders := make([]*Order, 0, len(matches))
 		for _, match := range matches {
-			// extract match order bid or ask
+			// extract match order bid or ask (if the order is a bid, the match order is an ask)
 			isBid := !placeOrderData.Bid
 			// extract match order's ID
 			var matchOrderId int64 = 0

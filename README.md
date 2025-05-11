@@ -29,3 +29,5 @@ How to create a cryptocurrency exchange from scratch -- Anthony GG
 2025/04/20 [EP4](https://youtu.be/xpXT127JXEU?list=PL0xRBLFXXsP5Q_a9FjmDfgtWatLHJVxGn&t=32) 00:30
 
 2025/04/26 [EP4](https://youtu.be/xpXT127JXEU?list=PL0xRBLFXXsP5Q_a9FjmDfgtWatLHJVxGn&t=2893) 48:13 
+
+2025/05/11 [EP5](https://youtu.be/bkzEohennvs?t=2018) 33:38 (Stuck into integrate ganache, can not do transfer token by go-ethereum wheels)

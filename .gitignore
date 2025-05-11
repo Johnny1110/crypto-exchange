@@ -27,3 +27,5 @@ go.work.sum
 bin
 
 .idea
+
+node_modules
