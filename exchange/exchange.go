@@ -1,8 +1,11 @@
 package exchange
 
 import (
+	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -11,37 +14,60 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type Market string
+type (
+	Market    string
+	OrderType string
 
-const (
-	MarketBTC Market = "BTC"
-	MarketETH Market = "ETH"
+	Exchange struct {
+		orderbooks map[Market]*orderbook.OrderBook
+		address    string
+		privateKey *ecdsa.PrivateKey
+	}
+
+	PlaceOrderRequest struct {
+		Username string    `json:"username"`
+		Market   Market    `json:"market"`
+		Type     OrderType `json:"type"`
+		Bid      bool      `json:"bid"`
+		Size     float64   `json:"size"`
+		Price    float64   `json:"price"`
+	}
+
+	Order struct {
+		ID        int64
+		Price     float64 `json:"price"`
+		Size      float64 `json:"size"`
+		Bid       bool    `json:"bid"`
+		Timestamp int64   `json:"timestamp"`
+	}
+
+	OrderBookDisplay struct {
+		Asks            []*Order
+		Bids            []*Order
+		TotalAsksVolume float64
+		TotalBidsVolume float64
+	}
 )
 
-type Exchange struct {
-	orderbooks map[Market]*orderbook.OrderBook
-}
-
-func NewExchange() *Exchange {
-	return &Exchange{
-		orderbooks: make(map[Market]*orderbook.OrderBook),
-	}
-}
-
-type OrderType string
-
 const (
+	MarketBTC   Market    = "BTC"
+	MarketETH   Market    = "ETH"
 	LimitOrder  OrderType = "LIMIT"
 	MarketOrder OrderType = "MARKET"
 )
 
-type PlaceOrderRequest struct {
-	Username string    `json:"username"`
-	Market   Market    `json:"market"`
-	Type     OrderType `json:"type"`
-	Bid      bool      `json:"bid"`
-	Size     float64   `json:"size"`
-	Price    float64   `json:"price"`
+func NewExchange(hotWalletAddress, hotWalletPrivateKey string) (*Exchange, error) {
+	privateKey, err := crypto.HexToECDSA(hotWalletPrivateKey)
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
+
+	return &Exchange{
+		orderbooks: make(map[Market]*orderbook.OrderBook),
+		address:    hotWalletAddress,
+		privateKey: privateKey,
+	}, nil
 }
 
 func (ex *Exchange) InitOrderbooks() {
@@ -101,21 +127,6 @@ func (ex *Exchange) HandlePlaceOrder(c echo.Context) error {
 	default:
 		return c.JSON(http.StatusBadRequest, map[string]any{"msg": "missing order type"})
 	}
-}
-
-type Order struct {
-	ID        int64
-	Price     float64 `json:"price"`
-	Size      float64 `json:"size"`
-	Bid       bool    `json:"bid"`
-	Timestamp int64   `json:"timestamp"`
-}
-
-type OrderBookDisplay struct {
-	Asks            []*Order
-	Bids            []*Order
-	TotalAsksVolume float64
-	TotalBidsVolume float64
 }
 
 func (ex *Exchange) HandleGetOrderBook(c echo.Context) error {
