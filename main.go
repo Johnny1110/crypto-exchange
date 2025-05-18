@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	hotWalletAddress    = "0xD7e264213909b9b2D5e5164c1973191aAeb9e591"
-	hotWalletPrivateKey = "97e64e8033170f2399b50bd57edf7629605206585dc59dcfc24de3c08dfd1d0c"
+	hotWalletAddress    = "0x6812A4DB987C1bdaf14be68F8acD9c17948622b9"
+	hotWalletPrivateKey = "b36b2f4b16ffbbbdb0369b597ce12ed24aaa729aa193cb12b6b070f4db566c7c"
 )
 
 func main() {

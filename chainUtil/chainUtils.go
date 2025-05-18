@@ -35,7 +35,7 @@ func TransferToken(client *ethclient.Client, symbol string, amount float64, to s
 	}
 
 	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
-	toAddress := common.HexToAddress("0xE0d9b33e91d8c17d2B41ffBe6567c997747a816F")
+	toAddress := common.HexToAddress(to)
 
 	switch symbol {
 	case "ETH":

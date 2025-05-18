@@ -185,6 +185,8 @@ func (ex *Exchange) HandleDeleteOrder(c echo.Context) error {
 	marketStr := c.Param("market")
 	orderIdStr := c.Param("id")
 
+	// TODO: should ensure request sender is order owner (secure)
+
 	market := Market(marketStr)
 	orderId, _ := strconv.Atoi(orderIdStr)
 	ob := ex.orderbooks[market]
