@@ -17,6 +17,7 @@ type Match struct {
 // <Order> ----------------------------------------------------------
 type Order struct {
 	ID        int64
+	UserID    int64
 	Size      float64
 	Bid       bool
 	Limit     *Limit // to track the limit
@@ -34,8 +35,9 @@ func (o *Order) String() string {
 		"}"
 }
 
-func NewOrder(bid bool, size float64) *Order {
+func NewOrder(bid bool, size float64, userId int64) *Order {
 	return &Order{
+		UserID:    userId,
 		ID:        int64(rand.Intn(100000000)),
 		Size:      size,
 		Bid:       bid,
@@ -149,8 +151,9 @@ func (l *Limit) deleteOrder(o *Order) {
 
 // <OrderBook> ----------------------------------------------------------
 type OrderBook struct {
-	asks []*Limit
-	bids []*Limit
+	Symbol string
+	asks   []*Limit
+	bids   []*Limit
 
 	AskLimits map[float64]*Limit
 	BidLimits map[float64]*Limit
@@ -158,8 +161,9 @@ type OrderBook struct {
 	limitOrderIdMap map[int64]*Order
 }
 
-func NewOrderBook() *OrderBook {
+func NewOrderBook(symbol string) *OrderBook {
 	return &OrderBook{
+		Symbol:          symbol,
 		asks:            []*Limit{},
 		bids:            []*Limit{},
 		AskLimits:       make(map[float64]*Limit),
