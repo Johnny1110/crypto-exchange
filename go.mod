@@ -5,6 +5,7 @@ go 1.23.0
 toolchain go1.23.9
 
 require (
+	github.com/emirpasic/gods v1.18.1
 	github.com/ethereum/go-ethereum v1.15.11
 	github.com/labstack/echo/v4 v4.13.3
 )
