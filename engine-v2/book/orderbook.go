@@ -12,8 +12,7 @@ import (
 type OrderType int
 
 const (
-	MAKE_LIMIT OrderType = iota
-	TAKE_LIMIT
+	LIMIT OrderType = iota
 	MARKET
 )
 
@@ -40,11 +39,12 @@ func (t Trade) String() string {
 
 // OrderBook maintains buy and sell sides, and a global index for fast order lookup.
 type OrderBook struct {
-	market     string
-	bidSide    *BookSide
-	askSide    *BookSide
-	orderIndex *OrderIndex
-	mu         sync.Mutex
+	market      string
+	bidSide     *BookSide
+	askSide     *BookSide
+	orderIndex  *OrderIndex
+	latestPrice float64
+	mu          sync.Mutex
 }
 
 // NewOrderBook creates a new OrderBook instance.
@@ -57,24 +57,42 @@ func NewOrderBook(market string) *OrderBook {
 	}
 }
 
+// PlaceOrder place order into order book, support LIMIT/MAKER, LIMIT/TAKER and MARKET 3 kind of scenario
 func (ob *OrderBook) PlaceOrder(orderType OrderType, order *model.Order) ([]Trade, error) {
 	ob.mu.Lock()
 	defer ob.mu.Unlock()
 
 	if ob.orderIndex.OrderIdExist(order.ID) {
-		return nil, errors.New("Order ID already exist")
+		return nil, fmt.Errorf("order ID %s already exists", order.ID)
 	}
 
+	var trades []Trade
+	var err error
+
 	switch orderType {
-	case MAKE_LIMIT:
-		return nil, ob.makeLimitOrder(order)
-	case TAKE_LIMIT:
-		return ob.takeLimitOrder(order)
+	case LIMIT:
+		// LIMIT-Maker, place order into book and return directly
+		if order.Type == model.MAKER {
+			err = ob.makeLimitOrder(order)
+			return nil, err
+		}
+		// LIMIT-Taker
+		trades, err = ob.takeLimitOrder(order)
 	case MARKET:
-		return ob.takeMarketOrder(order)
+		// MARKET always will be Taker
+		trades, err = ob.takeMarketOrder(order)
 	default:
-		return nil, errors.New("Unsupported order type")
+		return nil, fmt.Errorf("unsupported order type: %v", orderType)
 	}
+
+	// if matching error (takeLimitOrder or takeMarketOrder), return directly.
+	if err != nil {
+		return nil, err
+	}
+
+	// update last matching price
+	ob.updateLatestPrice(trades)
+	return trades, nil
 }
 
 // MakeLimitOrder adds a new limit order to the book without attempting to match. (Maker)
@@ -218,6 +236,18 @@ func (ob *OrderBook) TotalAskVolume() float64 {
 
 func (ob *OrderBook) TotalBidVolume() float64 {
 	return ob.bidSide.TotalVolume()
+}
+
+func (ob *OrderBook) LatestPrice() float64 {
+	return ob.latestPrice
+}
+
+func (ob *OrderBook) updateLatestPrice(trades []Trade) {
+	if len(trades) == 0 {
+		return
+	}
+	lastTrade := trades[len(trades)-1]
+	ob.latestPrice = lastTrade.Price
 }
 
 func priceCheck(orderSide model.Side, orderPrice, bestPrice float64) bool {

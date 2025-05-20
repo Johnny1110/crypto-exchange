@@ -5,10 +5,16 @@ import (
 )
 
 type Side int
+type Type int
 
 const (
 	BID Side = iota
 	ASK Side = iota
+)
+
+const (
+	MAKER Type = iota
+	TAKER Type = iota
 )
 
 type Order struct {
@@ -18,17 +24,19 @@ type Order struct {
 	Price        float64
 	OriginalQty  float64
 	RemainingQty float64
+	Type         Type
 	Timestamp    time.Time
 }
 
-func NewOrder(orderId, userID string, side Side, price float64, qty float64) *Order {
+func NewOrder(orderId, userId string, side Side, price float64, qty float64, orderType Type) *Order {
 	return &Order{
 		ID:           orderId,
-		UserID:       userID,
+		UserID:       userId,
 		Side:         side,
 		Price:        price,
 		OriginalQty:  qty,
 		RemainingQty: qty,
+		Type:         orderType,
 		Timestamp:    time.Now(),
 	}
 }
@@ -38,8 +46,8 @@ type OrderNode struct {
 	Prev, Next *OrderNode
 }
 
-func NewOrderNode(orderId, userID string, side Side, price float64, qty float64) *OrderNode {
-	order := NewOrder(orderId, userID, side, price, qty)
+func NewOrderNode(orderId, userId string, side Side, price float64, qty float64, orderType Type) *OrderNode {
+	order := NewOrder(orderId, userId, side, price, qty, orderType)
 	return &OrderNode{
 		Order: order,
 	}
