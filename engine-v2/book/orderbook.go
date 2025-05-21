@@ -21,18 +21,18 @@ type Trade struct {
 	BidOrderID string
 	AskOrderID string
 	Price      float64
-	Qty        float64
+	Size       float64
 	Timestamp  time.Time
 }
 
 // String implements fmt.Stringer, returning a full snapshot of the trade.
 func (t Trade) String() string {
 	return fmt.Sprintf(
-		"Trade{BidOrderID: %q, AskOrderID: %q, Price: %.2f, Qty: %.4f, Timestamp: %s}",
+		"Trade{BidOrderID: %q, AskOrderID: %q, Price: %.2f, Size: %.4f, Timestamp: %s}",
 		t.BidOrderID,
 		t.AskOrderID,
 		t.Price,
-		t.Qty,
+		t.Size,
 		t.Timestamp.Format(time.RFC3339),
 	)
 }
@@ -44,7 +44,7 @@ type OrderBook struct {
 	askSide     *BookSide
 	orderIndex  *OrderIndex
 	latestPrice float64
-	mu          sync.Mutex
+	mu          sync.RWMutex
 }
 
 // NewOrderBook creates a new OrderBook instance.
@@ -107,7 +107,7 @@ func (ob *OrderBook) makeLimitOrder(order *model.Order) error {
 	}
 
 	// Add to index for fast lookup/cancel
-	ob.orderIndex.Add(node)
+	ob.addOrderIndex(node)
 
 	return nil
 }
@@ -135,14 +135,14 @@ func (ob *OrderBook) CancelOrder(orderID string) error {
 	}
 
 	// Remove from index
-	return ob.orderIndex.Remove(orderID)
+	return ob.removeOrderIndex(orderID)
 }
 
 // Match attempts to match an incoming order against the book and returns the resulting trades.
 // Any unfilled portion of the incoming order will be added to the book. (Taker)
 func (ob *OrderBook) takeLimitOrder(order *model.Order) ([]Trade, error) {
 	var trades []Trade
-	remainingQty := order.RemainingQty
+	remainingQty := order.RemainingSize
 	opposite := ob.oppositeSide(order.Side)
 
 	// loop until order fulfilled or break by stop limit
@@ -160,8 +160,8 @@ func (ob *OrderBook) takeLimitOrder(order *model.Order) ([]Trade, error) {
 
 		// Determine trade qty
 		tradeQty := remainingQty
-		if bestNode.Order.RemainingQty < remainingQty {
-			tradeQty = bestNode.Order.RemainingQty
+		if bestNode.Order.RemainingSize < remainingQty {
+			tradeQty = bestNode.Order.RemainingSize
 		}
 
 		bidOrderId, askOrderId := determineOrderId(order, bestNode.Order)
@@ -171,24 +171,27 @@ func (ob *OrderBook) takeLimitOrder(order *model.Order) ([]Trade, error) {
 			BidOrderID: bidOrderId,
 			AskOrderID: askOrderId,
 			Price:      bestPrice,
-			Qty:        tradeQty,
+			Size:       tradeQty,
 			Timestamp:  time.Now(),
 		}
 		trades = append(trades, trade)
 
 		// Update qty
-		bestNode.Order.RemainingQty -= tradeQty
+		bestNode.Order.RemainingSize -= tradeQty
 		remainingQty -= tradeQty
 
 		// If counter-party still has leftover, put it back into book side (price level head)
-		if bestNode.Order.RemainingQty > 0 {
+		if bestNode.Order.RemainingSize > 0 {
 			opposite.PutToHead(bestPrice, bestNode)
+		} else {
+			// If counter-party still has no leftover, remove it from orderIndex
+			ob.removeOrderIndex(bestNode.Order.ID)
 		}
 	}
 
 	// If incoming not fully filled, add remainder into book
 	if remainingQty > 0 {
-		order.RemainingQty = remainingQty
+		order.RemainingSize = remainingQty
 		err := ob.makeLimitOrder(order)
 		if err != nil {
 			return nil, err
@@ -201,7 +204,7 @@ func (ob *OrderBook) takeLimitOrder(order *model.Order) ([]Trade, error) {
 func (ob *OrderBook) takeMarketOrder(order *model.Order) ([]Trade, error) {
 	opposite := ob.oppositeSide(order.Side)
 
-	if opposite.totalVolume < order.RemainingQty {
+	if opposite.totalVolume < order.RemainingSize {
 		return nil, errors.New("not enough volume")
 	}
 	if order.Side == model.BID {
@@ -231,14 +234,20 @@ func (ob *OrderBook) oppositeSide(side model.Side) *BookSide {
 }
 
 func (ob *OrderBook) TotalAskVolume() float64 {
+	ob.mu.RLock()
+	defer ob.mu.RUnlock()
 	return ob.askSide.TotalVolume()
 }
 
 func (ob *OrderBook) TotalBidVolume() float64 {
+	ob.mu.RLock()
+	defer ob.mu.RUnlock()
 	return ob.bidSide.TotalVolume()
 }
 
 func (ob *OrderBook) LatestPrice() float64 {
+	ob.mu.RLock()
+	defer ob.mu.RUnlock()
 	return ob.latestPrice
 }
 
@@ -248,6 +257,14 @@ func (ob *OrderBook) updateLatestPrice(trades []Trade) {
 	}
 	lastTrade := trades[len(trades)-1]
 	ob.latestPrice = lastTrade.Price
+}
+
+func (ob *OrderBook) removeOrderIndex(orderId string) error {
+	return ob.orderIndex.Remove(orderId)
+}
+
+func (ob *OrderBook) addOrderIndex(node *model.OrderNode) {
+	ob.orderIndex.Add(node)
 }
 
 func priceCheck(orderSide model.Side, orderPrice, bestPrice float64) bool {

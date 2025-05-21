@@ -33,7 +33,7 @@ func (dq *OrderNodeDeque) PushBack(node *model.OrderNode) {
 		dq.tail = node
 	}
 	dq.size++
-	dq.volume += node.Qty()
+	dq.volume += node.Size()
 }
 
 // PushHead adds a node to the head of the deque in O(1) time.
@@ -48,7 +48,7 @@ func (dq *OrderNodeDeque) PushHead(node *model.OrderNode) {
 		dq.head = node
 	}
 	dq.size++
-	dq.volume += node.Qty()
+	dq.volume += node.Size()
 }
 
 // PopFront removes and returns the node at the front of the deque in O(1) time.
@@ -67,7 +67,7 @@ func (dq *OrderNodeDeque) PopFront() (*model.OrderNode, error) {
 		dq.head.Prev = nil
 	}
 	dq.size--
-	dq.volume -= node.Qty()
+	dq.volume -= node.Size()
 
 	// clean up the popped node.
 	node.Next = nil
@@ -103,7 +103,7 @@ func (dq *OrderNodeDeque) Remove(node *model.OrderNode) error {
 		dq.tail.Next = nil
 		node.Prev = nil
 		dq.size--
-		dq.volume -= node.Qty()
+		dq.volume -= node.Size()
 		return nil
 	}
 
@@ -113,7 +113,7 @@ func (dq *OrderNodeDeque) Remove(node *model.OrderNode) error {
 	node.Next = nil
 	node.Prev = nil
 	dq.size--
-	dq.volume -= node.Qty()
+	dq.volume -= node.Size()
 	return nil
 }
 

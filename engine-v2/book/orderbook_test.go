@@ -3,7 +3,9 @@ package book
 import (
 	"fmt"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
+	"sync"
 	"testing"
+	"time"
 )
 
 func mockOrderBook(t *testing.T) *OrderBook {
@@ -75,7 +77,7 @@ func TestOrderBook_TakeLimitOrder_BID(t *testing.T) {
 
 	fmt.Println(trades)
 	assert(t, 1, len(trades))
-	assert(t, 1.0, trades[0].Qty)
+	assert(t, 1.0, trades[0].Size)
 	assert(t, 2100.0, trades[0].Price)
 	assert(t, "test_bid_01", trades[0].BidOrderID)
 	assert(t, "A01", trades[0].AskOrderID)
@@ -112,11 +114,110 @@ func TestOrderBook_TakeMarketOrder(t *testing.T) {
 	trades, _ := ob.PlaceOrder(MARKET, askOrder_qty10)
 	fmt.Println(trades)
 	assert(t, 3, len(trades))
-	assert(t, 5.0, trades[0].Qty)
-	assert(t, 5.0, trades[1].Qty)
-	assert(t, 1.0, trades[2].Qty)
+	assert(t, 5.0, trades[0].Size)
+	assert(t, 5.0, trades[1].Size)
+	assert(t, 1.0, trades[2].Size)
 
 	assert(t, 14.0, ob.TotalBidVolume())
 	fmt.Printf("Latest Price %.2f \n", ob.LatestPrice())
 	assert(t, 2200.0, ob.LatestPrice())
+}
+
+// Helper to assert error absence
+func assertNoError(t *testing.T, err error) {
+	t.Helper()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+// Concurrency safety: spawn multiple goroutines for placing and canceling orders
+func TestOrderBook_ConcurrencySafety(t *testing.T) {
+	ob := NewOrderBook("ETH/USDT")
+	const n = 1000
+	var wg sync.WaitGroup
+
+	// Place and then cancel orders concurrently
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			id := fmt.Sprintf("O%04d", i)
+			order := model.NewOrder(id, "user", model.BID, 100+float64(i%10), 1, model.MAKER)
+			// Place order
+			_, err_1 := ob.PlaceOrder(LIMIT, order)
+			assertNoError(t, err_1)
+			// Optional small sleep to increase interleaving
+			time.Sleep(time.Microsecond)
+			// Cancel order
+			err := ob.CancelOrder(id)
+			// Cancellation should succeed
+			if err != nil {
+				t.Errorf("cancel failed for %s: %v", id, err)
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	// After all, book should be empty
+	assert(t, 0.0, ob.TotalBidVolume())
+	assert(t, 0.0, ob.TotalAskVolume())
+}
+
+// Boundary scenarios
+func TestOrderBook_BoundaryScenarios(t *testing.T) {
+	ob := NewOrderBook("TEST/USDT")
+
+	// Empty book matching returns no trades and no panics
+	trades, err := ob.PlaceOrder(LIMIT, model.NewOrder("T1", "u", model.BID, 100, 1, model.TAKER))
+	assertNoError(t, err)
+	assert(t, 0, len(trades))
+
+	// Price mismatch: bid price lower than best ask
+	// Setup an ask at price 110
+	_, err_1 := ob.PlaceOrder(LIMIT, model.NewOrder("A1", "u", model.ASK, 110, 5, model.MAKER))
+	assertNoError(t, err_1)
+	// Place a taker bid at price 100
+	trades, err_2 := ob.PlaceOrder(LIMIT, model.NewOrder("T2", "u", model.BID, 100, 1, model.TAKER))
+	assertNoError(t, err_2)
+	assert(t, 0, len(trades))
+
+	// Partial fill should re-enter remainder
+	// Place taker bid at price 110 for quantity 3 (ask has 5)
+	trades, err = ob.PlaceOrder(LIMIT, model.NewOrder("T3", "u", model.BID, 110, 3, model.TAKER))
+	assertNoError(t, err)
+	assert(t, 1, len(trades))
+	assert(t, 3.0, trades[0].Size)
+	// Remaining ask volume should be 2
+	assert(t, 2.0, ob.TotalAskVolume())
+	// Bid side got no volume (taker fully consumed) here.
+	assert(t, 2.0, ob.TotalBidVolume())
+
+	// Clean up
+	assertNoError(t, ob.CancelOrder("A1"))
+}
+
+// Market order tests
+func TestOrderBook_MarketOrder(t *testing.T) {
+	ob := NewOrderBook("TEST/USDT")
+
+	// Setup depth: two asks totaling 5
+	_, err_1 := ob.PlaceOrder(LIMIT, model.NewOrder("A1", "u", model.ASK, 100, 2, model.MAKER))
+	assertNoError(t, err_1)
+	_, err_2 := ob.PlaceOrder(LIMIT, model.NewOrder("A2", "u", model.ASK, 101, 3, model.MAKER))
+	assertNoError(t, err_2)
+
+	// Insufficient market buy order
+	_, err := ob.PlaceOrder(MARKET, model.NewOrder("T1", "u", model.BID, 0, 10, model.TAKER))
+	if err == nil {
+		t.Fatalf("expected error for insufficient volume, got nil")
+	}
+
+	// Sufficient market buy order
+	trades, err := ob.PlaceOrder(MARKET, model.NewOrder("T2", "u", model.BID, 0, 5, model.TAKER))
+	assertNoError(t, err)
+	// Should generate exactly 2 trades
+	assert(t, 2, len(trades))
+	// All asks consumed
+	assert(t, 0.0, ob.TotalAskVolume())
 }

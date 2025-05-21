@@ -78,9 +78,9 @@ func TestPopBest(t *testing.T) {
 
 	bestBidOrder, _ := bidSide.PopBest()
 	assert(t, 1300.0, bestBidOrder.Price())
-	assert(t, 2.0, bestBidOrder.Qty())
+	assert(t, 2.0, bestBidOrder.Size())
 
 	bestAskOrder, _ := askSide.PopBest()
 	assert(t, 1400.0, bestAskOrder.Price())
-	assert(t, 10.0, bestAskOrder.Qty())
+	assert(t, 10.0, bestAskOrder.Size())
 }

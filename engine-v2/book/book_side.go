@@ -44,7 +44,7 @@ func (bs *BookSide) AddOrderNode(price float64, node *model.OrderNode) {
 	// force convert to type OrderNodeDeque
 	deque := v.(*util.OrderNodeDeque)
 	deque.PushBack(node)
-	bs.totalVolume += node.Qty()
+	bs.totalVolume += node.Size()
 }
 
 // RemoveOrderNode removes a specific node from the deque at price.
@@ -52,7 +52,7 @@ func (bs *BookSide) AddOrderNode(price float64, node *model.OrderNode) {
 func (bs *BookSide) RemoveOrderNode(price float64, node *model.OrderNode) error {
 	v, ok := bs.priceLevels.Get(price)
 	if !ok {
-		errors.New("price level not found")
+		return errors.New("price level not found")
 	}
 
 	deque := v.(*util.OrderNodeDeque)
@@ -66,7 +66,7 @@ func (bs *BookSide) RemoveOrderNode(price float64, node *model.OrderNode) error 
 		bs.priceLevels.Remove(price)
 	}
 
-	bs.totalVolume -= node.Qty()
+	bs.totalVolume -= node.Size()
 	return nil
 }
 
@@ -116,7 +116,7 @@ func (bs *BookSide) PopBest() (*model.OrderNode, error) {
 		bs.priceLevels.Remove(bestPrice)
 	}
 
-	bs.totalVolume -= node.Qty()
+	bs.totalVolume -= node.Size()
 	return node, nil
 }
 
@@ -145,5 +145,5 @@ func (bs *BookSide) PutToHead(price float64, node *model.OrderNode) {
 	// force convert to type OrderNodeDeque
 	deque := v.(*util.OrderNodeDeque)
 	deque.PushHead(node)
-	bs.totalVolume += node.Qty()
+	bs.totalVolume += node.Size()
 }

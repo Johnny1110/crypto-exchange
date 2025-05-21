@@ -9,35 +9,35 @@ type Type int
 
 const (
 	BID Side = iota
-	ASK Side = iota
+	ASK
 )
 
 const (
 	MAKER Type = iota
-	TAKER Type = iota
+	TAKER
 )
 
 type Order struct {
-	ID           string
-	UserID       string
-	Side         Side
-	Price        float64
-	OriginalQty  float64
-	RemainingQty float64
-	Type         Type
-	Timestamp    time.Time
+	ID            string
+	UserID        string
+	Side          Side
+	Price         float64
+	OriginalSize  float64
+	RemainingSize float64
+	Type          Type
+	Timestamp     time.Time
 }
 
-func NewOrder(orderId, userId string, side Side, price float64, qty float64, orderType Type) *Order {
+func NewOrder(orderId, userId string, side Side, price float64, size float64, orderType Type) *Order {
 	return &Order{
-		ID:           orderId,
-		UserID:       userId,
-		Side:         side,
-		Price:        price,
-		OriginalQty:  qty,
-		RemainingQty: qty,
-		Type:         orderType,
-		Timestamp:    time.Now(),
+		ID:            orderId,
+		UserID:        userId,
+		Side:          side,
+		Price:         price,
+		OriginalSize:  size,
+		RemainingSize: size,
+		Type:          orderType,
+		Timestamp:     time.Now(),
 	}
 }
 
@@ -53,8 +53,8 @@ func NewOrderNode(orderId, userId string, side Side, price float64, qty float64,
 	}
 }
 
-func (node *OrderNode) Qty() float64 {
-	return node.Order.RemainingQty
+func (node *OrderNode) Size() float64 {
+	return node.Order.RemainingSize
 }
 
 func (node *OrderNode) Price() float64 {
