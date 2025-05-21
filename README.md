@@ -50,3 +50,60 @@ $> node node_modules/.bin/ganache
 2025/05/18 [EP5](https://youtu.be/bkzEohennvs?t=8109) 2:15:09 (Token Transfer done, but don't know why to wallet address didn't received the ETH token)
 
 2025/05/20 revamp engine-v2 by Chat-GPT [link](https://chatgpt.com/share/682c6180-9bb4-8003-bbd5-22332df49a82)
+
+<br>
+<br>
+
+## Order Book Benchmark Test:
+
+<br>
+
+1. Limit Order (all maker)
+
+```
+goos: darwin
+goarch: amd64
+pkg: github.com/johnny1110/crypto-exchange/engine-v2/book
+cpu: VirtualApple @ 2.50GHz
+BenchmarkMakeLimitOrder
+BenchmarkMakeLimitOrder-8   	 1978701/s	       694.7 ns/op
+```
+
+<br>
+
+2. Limit Order full match (Taker)
+
+```
+goos: darwin
+goarch: amd64
+pkg: github.com/johnny1110/crypto-exchange/engine-v2/book
+cpu: VirtualApple @ 2.50GHz
+BenchmarkTakeLimitOrder_FullMatch
+BenchmarkTakeLimitOrder_FullMatch-8   	 1882754/s	       743.3 ns/op
+```
+
+<br>
+
+3. Market Order
+
+```
+goos: darwin
+goarch: amd64
+pkg: github.com/johnny1110/crypto-exchange/engine-v2/book
+cpu: VirtualApple @ 2.50GHz
+BenchmarkTakeMarketOrder
+BenchmarkTakeMarketOrder-8   	 1789549/s	       680.6 ns/op
+```
+
+<br>
+
+4. Cancel Order
+
+```
+goos: darwin
+goarch: amd64
+pkg: github.com/johnny1110/crypto-exchange/engine-v2/book
+cpu: VirtualApple @ 2.50GHz
+BenchmarkCancelOrder
+BenchmarkCancelOrder-8   	 5864726/s	       259.0 ns/op
+```
