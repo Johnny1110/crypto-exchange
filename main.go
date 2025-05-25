@@ -1,13 +1,15 @@
 package main
 
 import (
-	"fmt"
+	"database/sql"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/johnny1110/crypto-exchange/engine-v1/exchange"
+	"github.com/gin-gonic/gin"
+	"github.com/johnny1110/crypto-exchange/engine-v2/core"
+	"github.com/johnny1110/crypto-exchange/handlers"
 	"log"
 	"net/http"
 
-	"github.com/labstack/echo/v4"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 const (
@@ -15,36 +17,82 @@ const (
 	hotWalletPrivateKey = "b36b2f4b16ffbbbdb0369b597ce12ed24aaa729aa193cb12b6b070f4db566c7c"
 )
 
+//func main() {
+//	e := echo.New()
+//	e.HTTPErrorHandler = httpErrorHandler
+//
+//	ethClient, err := getEthClient()
+//	if err != nil {
+//		e.Logger.Fatal(err)
+//	}
+//	ex, err := exchange.NewExchange(ethClient, hotWalletAddress, hotWalletPrivateKey)
+//
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+//	ex.InitOrderbooks()
+//	e.GET("/healthcheck", func(c echo.Context) error { return c.String(http.StatusOK, "OK") })
+//	e.POST("/order", ex.HandlePlaceOrder)
+//	e.DELETE("/orderbook/:market/order/:id", ex.HandleDeleteOrder)
+//	e.GET("/orderbook/:market", ex.HandleGetOrderBook)
+//	e.GET("/orderbook/:market/orderIds", ex.HandleGetOrderIds)
+//	e.POST("/user/register", ex.RegisterUser)
+//	e.GET("/user/:userId/symbol/:symbol/balance", ex.QueryBalance)
+//
+//	e.Start(":3000")
+//}
+
 func main() {
-	e := echo.New()
-	e.HTTPErrorHandler = httpErrorHandler
-
-	ethClient, err := getEthClient()
+	db, err := sql.Open("sqlite3", "./exg.db")
 	if err != nil {
-		e.Logger.Fatal(err)
+		log.Fatalf("failed to open database: %v", err)
 	}
-	ex, err := exchange.NewExchange(ethClient, hotWalletAddress, hotWalletPrivateKey)
+	defer db.Close()
 
-	if err != nil {
-		log.Fatal(err)
-	}
+	market := make([]string, 2)
+	market = append(market, "BTC/USDT")
+	market = append(market, "ETH/USDT")
+	ob := core.NewExchange(market)
 
-	ex.InitOrderbooks()
-	e.GET("/healthcheck", func(c echo.Context) error { return c.String(http.StatusOK, "OK") })
-	e.POST("/order", ex.HandlePlaceOrder)
-	e.DELETE("/orderbook/:market/order/:id", ex.HandleDeleteOrder)
-	e.GET("/orderbook/:market", ex.HandleGetOrderBook)
-	e.GET("/orderbook/:market/orderIds", ex.HandleGetOrderIds)
-	e.POST("/user/register", ex.RegisterUser)
-	e.GET("/user/:userId/symbol/:symbol/balance", ex.QueryBalance)
+	r := gin.Default()
+	// inject db into context
+	r.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Set("ob", ob)
+		c.Next()
+	})
 
-	e.Start(":3000")
+	registerRouter(r)
+
+	r.Run(":8080")
+}
+
+func registerRouter(r *gin.Engine) {
+	r.GET("/healthcheck", healthcheck)
+
+	// user account
+	r.POST("/users/register", handlers.Register)
+	r.POST("/users/login", handlers.Login)
+
+	// admin access
+	r.POST("/admin/manual-adjustment", handlers.ManualAdjustment)
+
+	// auth middleware
+	auth := r.Group("/", handlers.AuthMiddleware)
+	// auth protected
+	auth.DELETE("/users/logout", handlers.Logout)
+	auth.GET("/balances", handlers.GetBalance)
+}
+
+func healthcheck(context *gin.Context) {
+	context.JSON(http.StatusOK, "OK")
 }
 
 func getEthClient() (*ethclient.Client, error) {
 	return ethclient.Dial("http://localhost:8545")
 }
 
-func httpErrorHandler(err error, c echo.Context) {
-	fmt.Println(err)
-}
+//func httpErrorHandler(err error, c echo.Context) {
+//	fmt.Println(err)
+//}

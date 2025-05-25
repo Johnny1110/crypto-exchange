@@ -267,6 +267,29 @@ func (ob *OrderBook) addOrderIndex(node *model.OrderNode) {
 	ob.orderIndex.Add(node)
 }
 
+func (ob *OrderBook) BestBid() (float64, float64, error) {
+	ob.mu.RLock()
+	defer ob.mu.RUnlock()
+	bestPrice, err := ob.bidSide.BestPrice()
+	if err != nil {
+		return 0, 0, err
+	}
+	volume := ob.bidSide.TotalVolume()
+	return bestPrice, volume, nil
+}
+
+func (ob *OrderBook) BestAsk() (float64, float64, error) {
+	ob.mu.RLock()
+	defer ob.mu.RUnlock()
+
+	bestPrice, err := ob.askSide.BestPrice()
+	if err != nil {
+		return 0, 0, err
+	}
+	volume := ob.askSide.TotalVolume()
+	return bestPrice, volume, nil
+}
+
 func priceCheck(orderSide model.Side, orderPrice, bestPrice float64) bool {
 	if orderSide == model.BID {
 		return orderPrice >= bestPrice

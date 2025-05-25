@@ -1,0 +1,31 @@
+package handlers
+
+import (
+	"github.com/johnny1110/crypto-exchange/engine-v2/book"
+	"github.com/johnny1110/crypto-exchange/engine-v2/model"
+)
+
+type registerReq struct {
+	Username string `json:"username" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
+
+type loginReq struct {
+	Username string `json:"username" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
+
+type settlementReq struct {
+	Username string  `json:"username" binding:"required"`
+	Asset    string  `json:"asset" binding:"required"`
+	Amount   float64 `json:"amount" binding:"required,gt=0"`
+	Secret   string  `json:"secret" binding:"required"`
+}
+
+type orderReq struct {
+	Side      model.Side     `json:"side" binding:"required,oneof=0 1"`
+	OrderType book.OrderType `json:"order_type" binding:"required,oneof=0 1"`           // 0=LIMIT,1=MARKET
+	Mode      model.Type     `json:"mode" binding:"required_if=order_type 0,oneof=0 1"` // 0=MAKER,1=TAKER
+	Price     float64        `json:"price" binding:"required_if=order_type 0,gt=0"`     // only LIMIT order，且 >0
+	Size      float64        `json:"size" binding:"required,gt=0"`                      // must greater than 0
+}
