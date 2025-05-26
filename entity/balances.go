@@ -1,4 +1,4 @@
-package model
+package entity
 
 type Balance struct {
 	Asset     string  `json:"asset"`

@@ -3,12 +3,13 @@ package book
 import (
 	"fmt"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
+	"github.com/johnny1110/crypto-exchange/market"
 	"testing"
 )
 
 // Benchmark for placing maker (limit) orders
 func BenchmarkMakeLimitOrder(b *testing.B) {
-	ob := NewOrderBook("BENCH/USDT")
+	ob := NewOrderBook(mockMarket())
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		order := model.NewOrder(
@@ -28,7 +29,7 @@ func BenchmarkMakeLimitOrder(b *testing.B) {
 // Benchmark for taking limit orders that fully match at top of book
 func BenchmarkTakeLimitOrder_FullMatch(b *testing.B) {
 	// prepare book with deep book depth
-	ob := NewOrderBook("BENCH/USDT")
+	ob := NewOrderBook(mockMarket())
 	depth := 1000
 	for i := 0; i < depth; i++ {
 		order := model.NewOrder(
@@ -61,7 +62,7 @@ func BenchmarkTakeLimitOrder_FullMatch(b *testing.B) {
 
 // Benchmark for taking market orders
 func BenchmarkTakeMarketOrder(b *testing.B) {
-	ob := NewOrderBook("BENCH/USDT")
+	ob := NewOrderBook(mockMarket())
 	depth := 5000
 	volume := 0.0
 	for i := 0; i < depth; i++ {
@@ -97,7 +98,7 @@ func BenchmarkTakeMarketOrder(b *testing.B) {
 
 // Benchmark for canceling orders
 func BenchmarkCancelOrder(b *testing.B) {
-	ob := NewOrderBook("BENCH/USDT")
+	ob := NewOrderBook(mockMarket())
 	// pre-insert orders
 	orders := make([]*model.Order, b.N)
 	for i := 0; i < b.N; i++ {
@@ -118,4 +119,8 @@ func BenchmarkCancelOrder(b *testing.B) {
 			b.Fatalf("CancelOrder failed: %v", err)
 		}
 	}
+}
+
+func mockMarket() *market.MarketInfo {
+	return market.NewMarketInfo("DOT/USDT", "DOT", "USDT")
 }

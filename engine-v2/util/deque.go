@@ -6,7 +6,7 @@ import (
 )
 
 // OrderNodeDeque is a double end queue implement with double linked list.
-// It's holds pointers of OrderNode defined in model pkg.
+// It's holds pointers of OrderNode defined in entity pkg.
 // User must create OrderNode via model.OrderNode and push them into OrderNodeDeque.
 type OrderNodeDeque struct {
 	head, tail *model.OrderNode

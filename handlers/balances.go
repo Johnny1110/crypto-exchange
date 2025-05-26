@@ -3,7 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"github.com/gin-gonic/gin"
-	"github.com/johnny1110/crypto-exchange/model"
+	"github.com/johnny1110/crypto-exchange/entity"
 	"log"
 	"net/http"
 )
@@ -25,9 +25,9 @@ func GetBalance(c *gin.Context) {
 	}
 	defer rows.Close()
 
-	var result []model.Balance
+	var result []entity.Balance
 	for rows.Next() {
-		var b model.Balance
+		var b entity.Balance
 		if err := rows.Scan(&b.Asset, &b.Available, &b.Locked); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "scan error"})
 			return

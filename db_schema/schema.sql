@@ -19,6 +19,7 @@ CREATE TABLE orders
 (
     id            TEXT PRIMARY KEY,
     user_id       TEXT,
+    market        TEXT, -- ex: BTC/USDT ETH/USDT
     side          INTEGER, -- 0=Bid,1=Ask
     price         REAL,
     original_size  REAL,

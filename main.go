@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/johnny1110/crypto-exchange/engine-v2/core"
 	"github.com/johnny1110/crypto-exchange/handlers"
+	"github.com/johnny1110/crypto-exchange/market"
 	"log"
 	"net/http"
 
@@ -25,7 +26,7 @@ const (
 //	if err != nil {
 //		e.Logger.Fatal(err)
 //	}
-//	ex, err := exchange.NewExchange(ethClient, hotWalletAddress, hotWalletPrivateKey)
+//	ex, err := exchange.NewMatchingEngine(ethClient, hotWalletAddress, hotWalletPrivateKey)
 //
 //	if err != nil {
 //		log.Fatal(err)
@@ -50,22 +51,33 @@ func main() {
 	}
 	defer db.Close()
 
-	market := make([]string, 2)
-	market = append(market, "BTC/USDT")
-	market = append(market, "ETH/USDT")
-	ob := core.NewExchange(market)
+	markets := initMarkets()
+	engine, err := core.NewMatchingEngine(markets)
+
+	if err != nil {
+		log.Fatalf("failed to init exchange core: %v", err)
+	}
 
 	r := gin.Default()
 	// inject db into context
 	r.Use(func(c *gin.Context) {
 		c.Set("db", db)
-		c.Set("ob", ob)
+		c.Set("engine", engine)
 		c.Next()
 	})
 
 	registerRouter(r)
 
 	r.Run(":8080")
+}
+
+// initMarkets define markets here.
+func initMarkets() []*market.MarketInfo {
+	btcMarket := market.NewMarketInfo("BTC/USDT", "BTC", "USDT")
+	ethMarket := market.NewMarketInfo("ETH/USDT", "ETH", "USDT")
+	dotMarket := market.NewMarketInfo("DOT/USDT", "DOT", "USDT")
+
+	return []*market.MarketInfo{btcMarket, ethMarket, dotMarket}
 }
 
 func registerRouter(r *gin.Engine) {

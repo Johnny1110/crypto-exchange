@@ -9,7 +9,7 @@ import (
 )
 
 func mockOrderBook(t *testing.T) *OrderBook {
-	ob := NewOrderBook("ETH/USDT")
+	ob := NewOrderBook(mockMarket())
 
 	marketMakerName := "supermaker"
 	// make some bid order (total 5 qty)
@@ -133,7 +133,7 @@ func assertNoError(t *testing.T, err error) {
 
 // Concurrency safety: spawn multiple goroutines for placing and canceling orders
 func TestOrderBook_ConcurrencySafety(t *testing.T) {
-	ob := NewOrderBook("ETH/USDT")
+	ob := NewOrderBook(mockMarket())
 	const n = 1000
 	var wg sync.WaitGroup
 
@@ -166,7 +166,7 @@ func TestOrderBook_ConcurrencySafety(t *testing.T) {
 
 // Boundary scenarios
 func TestOrderBook_BoundaryScenarios(t *testing.T) {
-	ob := NewOrderBook("TEST/USDT")
+	ob := NewOrderBook(mockMarket())
 
 	// Empty book matching returns no trades and no panics
 	trades, err := ob.PlaceOrder(LIMIT, model.NewOrder("T1", "u", model.BID, 100, 1, model.TAKER))
@@ -199,7 +199,7 @@ func TestOrderBook_BoundaryScenarios(t *testing.T) {
 
 // Market order tests
 func TestOrderBook_MarketOrder(t *testing.T) {
-	ob := NewOrderBook("TEST/USDT")
+	ob := NewOrderBook(mockMarket())
 
 	// Setup depth: two asks totaling 5
 	_, err_1 := ob.PlaceOrder(LIMIT, model.NewOrder("A1", "u", model.ASK, 100, 2, model.MAKER))

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
+	"github.com/johnny1110/crypto-exchange/market"
 	"math"
 	"sync"
 	"time"
@@ -39,7 +40,7 @@ func (t Trade) String() string {
 
 // OrderBook maintains buy and sell sides, and a global index for fast order lookup.
 type OrderBook struct {
-	market      string
+	market      *market.MarketInfo
 	bidSide     *BookSide
 	askSide     *BookSide
 	orderIndex  *OrderIndex
@@ -48,7 +49,7 @@ type OrderBook struct {
 }
 
 // NewOrderBook creates a new OrderBook instance.
-func NewOrderBook(market string) *OrderBook {
+func NewOrderBook(market *market.MarketInfo) *OrderBook {
 	return &OrderBook{
 		market:     market,
 		bidSide:    NewBookSide(true),
@@ -288,6 +289,14 @@ func (ob *OrderBook) BestAsk() (float64, float64, error) {
 	}
 	volume := ob.askSide.TotalVolume()
 	return bestPrice, volume, nil
+}
+
+func (ob *OrderBook) MarketInfo() *market.MarketInfo {
+	return ob.market
+}
+
+func (ob *OrderBook) GetAssets() (string, string) {
+	return ob.market.BaseAsset, ob.market.QuoteAsset
 }
 
 func priceCheck(orderSide model.Side, orderPrice, bestPrice float64) bool {

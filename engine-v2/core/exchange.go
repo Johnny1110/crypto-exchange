@@ -1,26 +1,33 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"github.com/johnny1110/crypto-exchange/engine-v2/book"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
+	"github.com/johnny1110/crypto-exchange/market"
 	"sync"
 )
 
-type Exchange struct {
+type MatchingEngine struct {
 	mu         sync.RWMutex
 	orderbooks map[string]*book.OrderBook
 }
 
-func NewExchange(markets []string) *Exchange {
-	e := &Exchange{orderbooks: make(map[string]*book.OrderBook, len(markets))}
-	for _, m := range markets {
-		e.orderbooks[m] = book.NewOrderBook(m)
+func NewMatchingEngine(markets []*market.MarketInfo) (*MatchingEngine, error) {
+	if len(markets) == 0 {
+		return nil, errors.New("markets must have at least one market")
 	}
-	return e
+	e := &MatchingEngine{
+		orderbooks: make(map[string]*book.OrderBook, len(markets)),
+	}
+	for _, m := range markets {
+		e.orderbooks[m.Name] = book.NewOrderBook(m)
+	}
+	return e, nil
 }
 
-func (e *Exchange) GetOrderBook(market string) (*book.OrderBook, error) {
+func (e *MatchingEngine) GetOrderBook(market string) (*book.OrderBook, error) {
 	ob, ok := e.orderbooks[market]
 	if !ok {
 		return nil, fmt.Errorf("market %s not found", market)
@@ -28,7 +35,7 @@ func (e *Exchange) GetOrderBook(market string) (*book.OrderBook, error) {
 	return ob, nil
 }
 
-func (e *Exchange) Markets() []string {
+func (e *MatchingEngine) Markets() []string {
 	markets := make([]string, 0, len(e.orderbooks))
 	for m := range e.orderbooks {
 		markets = append(markets, m)
@@ -36,7 +43,7 @@ func (e *Exchange) Markets() []string {
 	return markets
 }
 
-func (e *Exchange) PlaceOrder(market string, orderType book.OrderType, order *model.Order) ([]book.Trade, error) {
+func (e *MatchingEngine) PlaceOrder(market string, orderType book.OrderType, order *model.Order) ([]book.Trade, error) {
 	ob, err := e.GetOrderBook(market)
 	if err != nil {
 		return nil, err
@@ -44,7 +51,7 @@ func (e *Exchange) PlaceOrder(market string, orderType book.OrderType, order *mo
 	return ob.PlaceOrder(orderType, order)
 }
 
-func (e *Exchange) CancelOrder(market string, orderID string) error {
+func (e *MatchingEngine) CancelOrder(market string, orderID string) error {
 	ob, err := e.GetOrderBook(market)
 	if err != nil {
 		return err
@@ -52,7 +59,7 @@ func (e *Exchange) CancelOrder(market string, orderID string) error {
 	return ob.CancelOrder(orderID)
 }
 
-func (e *Exchange) Snapshot(market string) (bidPrice, bidSize, askPrice, askSize float64, err error) {
+func (e *MatchingEngine) Snapshot(market string) (bidPrice, bidSize, askPrice, askSize float64, err error) {
 	ob, err := e.GetOrderBook(market)
 	if err != nil {
 		return
