@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/johnny1110/crypto-exchange/settings"
+	"github.com/labstack/gommon/log"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
 )
@@ -23,6 +24,7 @@ func Register(c *gin.Context) {
 	var exists int
 	err := db.QueryRow("SELECT 1 FROM users WHERE username = ?", req.Username).Scan(&exists)
 	if err != sql.ErrNoRows {
+		log.Warnf("[User] Register failed %s", err.Error())
 		c.JSON(http.StatusConflict, gin.H{"error": "username already taken"})
 		return
 	}

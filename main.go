@@ -11,11 +11,11 @@ import (
 	"log"
 	"net/http"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 func main() {
-	db, err := sql.Open("sqlite3", "./exg.db")
+	db, err := sql.Open("sqlite", "file:exg.db")
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}
@@ -29,6 +29,11 @@ func main() {
 		Engine: engine,
 	}
 
+	autoMakerService := &service.AutoMakerService{
+		MakerName: "market_maker_01",
+		MakerUID:  "8c26c994-af9e-4ef2-8f09-2bf48b1a1b83",
+	}
+
 	if err != nil {
 		log.Fatalf("failed to init exchange core: %v", err)
 	}
@@ -39,6 +44,7 @@ func main() {
 		c.Set("db", db)
 		c.Set("engine", engine)
 		c.Set("orderService", orderService)
+		c.Set("autoMakerService", autoMakerService)
 		c.Next()
 	})
 
@@ -65,6 +71,7 @@ func registerRouter(r *gin.Engine) {
 
 	// admin access
 	r.POST("/admin/manual-adjustment", handlers.ManualAdjustment)
+	r.POST("/admin/auto-market-maker", handlers.AutoMarketMaker)
 
 	// auth middleware
 	auth := r.Group("/", handlers.AuthMiddleware)

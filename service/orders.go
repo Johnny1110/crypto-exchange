@@ -51,6 +51,7 @@ type PlaceOrderResult struct {
 }
 
 func (s *OrderService) PlaceOrder(req PlaceOrderRequest) (res *PlaceOrderResult, err error) {
+	log.Infof("[OrderService] PlaceOrder: %v", req)
 	// create TXN
 	tx, err := s.DB.Begin()
 	if err != nil {
