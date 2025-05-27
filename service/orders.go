@@ -77,6 +77,7 @@ func (s *OrderService) PlaceOrder(req PlaceOrderRequest) (res *PlaceOrderResult,
 		return nil, err
 	}
 
+	// TODO-(fix bug): market ask order freeze zero amount (because price*size=0)
 	var freezeAsset string
 	var freezeAmt float64
 	if req.Side == model.BID {
