@@ -5,7 +5,8 @@ import (
 )
 
 type Side int
-type Type int
+type Mode int
+type OrderStatus string
 
 const (
 	BID Side = iota
@@ -13,8 +14,22 @@ const (
 )
 
 const (
-	MAKER Type = iota
+	MAKER Mode = iota
 	TAKER
+)
+
+const (
+	// ORDER_STATUS_NEW indicates an order that has just been created and not yet matched.
+	ORDER_STATUS_NEW OrderStatus = "NEW"
+
+	// ORDER_STATUS_PARTIAL indicates an order that has been partially filled.
+	ORDER_STATUS_PARTIAL OrderStatus = "PARTIAL"
+
+	// ORDER_STATUS_FILLED indicates an order that has been completely filled.
+	ORDER_STATUS_FILLED OrderStatus = "FILLED"
+
+	// ORDER_STATUS_CANCELED indicates an order that has been canceled.
+	ORDER_STATUS_CANCELED OrderStatus = "CANCELED"
 )
 
 type Order struct {
@@ -24,11 +39,27 @@ type Order struct {
 	Price         float64
 	OriginalSize  float64
 	RemainingSize float64
-	Type          Type
+	Mode          Mode
 	Timestamp     time.Time
 }
 
-func NewOrder(orderId, userId string, side Side, price float64, size float64, orderType Type) *Order {
+func (o *Order) GetStatus() OrderStatus {
+	if o.OriginalSize == o.RemainingSize {
+		return ORDER_STATUS_NEW
+	}
+	if o.RemainingSize > 0 && o.RemainingSize < o.OriginalSize {
+		return ORDER_STATUS_PARTIAL
+	}
+	if o.RemainingSize == 0 {
+		return ORDER_STATUS_FILLED
+	}
+	return ORDER_STATUS_CANCELED
+}
+
+// NewOrder
+// side: BID ASK
+// mode: MAKER TAKER
+func NewOrder(orderId, userId string, side Side, price float64, size float64, mode Mode) *Order {
 	return &Order{
 		ID:            orderId,
 		UserID:        userId,
@@ -36,7 +67,7 @@ func NewOrder(orderId, userId string, side Side, price float64, size float64, or
 		Price:         price,
 		OriginalSize:  size,
 		RemainingSize: size,
-		Type:          orderType,
+		Mode:          mode,
 		Timestamp:     time.Now(),
 	}
 }
@@ -46,7 +77,7 @@ type OrderNode struct {
 	Prev, Next *OrderNode
 }
 
-func NewOrderNode(orderId, userId string, side Side, price float64, qty float64, orderType Type) *OrderNode {
+func NewOrderNode(orderId, userId string, side Side, price float64, qty float64, orderType Mode) *OrderNode {
 	order := NewOrder(orderId, userId, side, price, qty, orderType)
 	return &OrderNode{
 		Order: order,

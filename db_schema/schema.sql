@@ -24,18 +24,20 @@ CREATE TABLE orders
     price         REAL,
     original_size  REAL,
     remaining_size REAL,
-    type          INTEGER, -- 0=Maker,1=Taker,2=Market
+    type          INTEGER, -- 0=LIMIT,1=MARKET
+    mode          INTEGER, -- 0=MAKER,1=TAKER
     status        TEXT,    -- NEW, FILLED, CANCELED
     created_at    DATETIME,
     updated_at    DATETIME
 );
 
-CREATE TABLE trades
+create table trades_dg_tmp
 (
-    id               INTEGER PRIMARY KEY AUTOINCREMENT,
-    order_id         TEXT,
-    counter_order_id TEXT,
-    price            REAL,
-    size              REAL,
-    timestamp        DATETIME
+    id           INTEGER
+        primary key autoincrement,
+    ask_order_id TEXT     not null,
+    bid_order_id TEXT     not null,
+    price        REAL     not null,
+    size         REAL     not null,
+    timestamp    DATETIME not null
 );

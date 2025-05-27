@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
 	"github.com/johnny1110/crypto-exchange/market"
+	"github.com/labstack/gommon/log"
 	"math"
 	"sync"
 	"time"
@@ -21,6 +22,8 @@ const (
 type Trade struct {
 	BidOrderID string
 	AskOrderID string
+	BidUserID  string
+	AskUserID  string
 	Price      float64
 	Size       float64
 	Timestamp  time.Time
@@ -36,6 +39,16 @@ func (t Trade) String() string {
 		t.Size,
 		t.Timestamp.Format(time.RFC3339),
 	)
+}
+
+func (t Trade) GetCounterOrderID(side model.Side) string {
+	switch side {
+	case model.BID:
+		return t.AskOrderID
+	case model.ASK:
+		return t.BidOrderID
+	}
+	panic("unreachable")
 }
 
 // OrderBook maintains buy and sell sides, and a global index for fast order lookup.
@@ -73,15 +86,21 @@ func (ob *OrderBook) PlaceOrder(orderType OrderType, order *model.Order) ([]Trad
 	switch orderType {
 	case LIMIT:
 		// LIMIT-Maker, place order into book and return directly
-		if order.Type == model.MAKER {
+		if order.Mode == model.MAKER {
+			log.Infof("[OrderBook] PlaceOrder (maker) LIMIT order, orderID:[%s]", order.ID)
 			err = ob.makeLimitOrder(order)
 			return nil, err
+		} else {
+			log.Infof("[OrderBook] PlaceOrder (taker) LIMIT order, orderID:[%s]", order.ID)
+			// LIMIT-Taker
+			trades, err = ob.takeLimitOrder(order)
 		}
-		// LIMIT-Taker
-		trades, err = ob.takeLimitOrder(order)
+		break
 	case MARKET:
 		// MARKET always will be Taker
+		log.Infof("[OrderBook] PlaceOrder (taker) MARKET order, orderID:[%s]", order.ID)
 		trades, err = ob.takeMarketOrder(order)
+		break
 	default:
 		return nil, fmt.Errorf("unsupported order type: %v", orderType)
 	}
@@ -114,24 +133,24 @@ func (ob *OrderBook) makeLimitOrder(order *model.Order) error {
 }
 
 // CancelOrder removes an existing order from the book by its ID.
-func (ob *OrderBook) CancelOrder(orderID string) error {
+func (ob *OrderBook) CancelOrder(orderID string) (*model.Order, error) {
 	ob.mu.Lock()
 	defer ob.mu.Unlock()
 
 	// Lookup index
 	side, price, node, found := ob.orderIndex.Get(orderID)
 	if !found {
-		return errors.New("order not found")
+		return nil, errors.New("order not found")
 	}
 
 	// Remove from book side
 	if side == model.BID {
 		if err := ob.bidSide.RemoveOrderNode(price, node); err != nil {
-			return err
+			return nil, err
 		}
 	} else {
 		if err := ob.askSide.RemoveOrderNode(price, node); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
@@ -165,12 +184,14 @@ func (ob *OrderBook) takeLimitOrder(order *model.Order) ([]Trade, error) {
 			tradeQty = bestNode.Order.RemainingSize
 		}
 
-		bidOrderId, askOrderId := determineOrderId(order, bestNode.Order)
+		bidOrderId, bidUserId, askOrderId, askUserId := determineOrderId(order, bestNode.Order)
 
 		// Record trade
 		trade := Trade{
 			BidOrderID: bidOrderId,
 			AskOrderID: askOrderId,
+			BidUserID:  bidUserId,
+			AskUserID:  askUserId,
 			Price:      bestPrice,
 			Size:       tradeQty,
 			Timestamp:  time.Now(),
@@ -190,9 +211,10 @@ func (ob *OrderBook) takeLimitOrder(order *model.Order) ([]Trade, error) {
 		}
 	}
 
+	order.RemainingSize = remainingQty
+
 	// If incoming not fully filled, add remainder into book
-	if remainingQty > 0 {
-		order.RemainingSize = remainingQty
+	if order.RemainingSize > 0 {
 		err := ob.makeLimitOrder(order)
 		if err != nil {
 			return nil, err
@@ -217,12 +239,12 @@ func (ob *OrderBook) takeMarketOrder(order *model.Order) ([]Trade, error) {
 	return ob.takeLimitOrder(order)
 }
 
-// determineOrderId return (bidOrderId, askOrderId)
-func determineOrderId(order, oppositeOrder *model.Order) (string, string) {
+// determineOrderId return (bidOrderId, bidUserId, askOrderId, askUserId)
+func determineOrderId(order, oppositeOrder *model.Order) (string, string, string, string) {
 	if order.Side == model.BID {
-		return order.ID, oppositeOrder.ID
+		return order.ID, order.UserID, oppositeOrder.ID, oppositeOrder.UserID
 	} else {
-		return oppositeOrder.ID, order.ID
+		return oppositeOrder.ID, oppositeOrder.UserID, order.ID, order.UserID
 	}
 }
 
@@ -260,7 +282,7 @@ func (ob *OrderBook) updateLatestPrice(trades []Trade) {
 	ob.latestPrice = lastTrade.Price
 }
 
-func (ob *OrderBook) removeOrderIndex(orderId string) error {
+func (ob *OrderBook) removeOrderIndex(orderId string) (*model.Order, error) {
 	return ob.orderIndex.Remove(orderId)
 }
 

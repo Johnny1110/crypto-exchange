@@ -7,42 +7,12 @@ import (
 	"github.com/johnny1110/crypto-exchange/engine-v2/core"
 	"github.com/johnny1110/crypto-exchange/handlers"
 	"github.com/johnny1110/crypto-exchange/market"
+	"github.com/johnny1110/crypto-exchange/service"
 	"log"
 	"net/http"
 
 	_ "github.com/mattn/go-sqlite3"
 )
-
-const (
-	hotWalletAddress    = "0x6812A4DB987C1bdaf14be68F8acD9c17948622b9"
-	hotWalletPrivateKey = "b36b2f4b16ffbbbdb0369b597ce12ed24aaa729aa193cb12b6b070f4db566c7c"
-)
-
-//func main() {
-//	e := echo.New()
-//	e.HTTPErrorHandler = httpErrorHandler
-//
-//	ethClient, err := getEthClient()
-//	if err != nil {
-//		e.Logger.Fatal(err)
-//	}
-//	ex, err := exchange.NewMatchingEngine(ethClient, hotWalletAddress, hotWalletPrivateKey)
-//
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//
-//	ex.InitOrderbooks()
-//	e.GET("/healthcheck", func(c echo.Context) error { return c.String(http.StatusOK, "OK") })
-//	e.POST("/order", ex.HandlePlaceOrder)
-//	e.DELETE("/orderbook/:market/order/:id", ex.HandleDeleteOrder)
-//	e.GET("/orderbook/:market", ex.HandleGetOrderBook)
-//	e.GET("/orderbook/:market/orderIds", ex.HandleGetOrderIds)
-//	e.POST("/user/register", ex.RegisterUser)
-//	e.GET("/user/:userId/symbol/:symbol/balance", ex.QueryBalance)
-//
-//	e.Start(":3000")
-//}
 
 func main() {
 	db, err := sql.Open("sqlite3", "./exg.db")
@@ -54,6 +24,11 @@ func main() {
 	markets := initMarkets()
 	engine, err := core.NewMatchingEngine(markets)
 
+	orderService := &service.OrderService{
+		DB:     db,
+		Engine: engine,
+	}
+
 	if err != nil {
 		log.Fatalf("failed to init exchange core: %v", err)
 	}
@@ -63,6 +38,7 @@ func main() {
 	r.Use(func(c *gin.Context) {
 		c.Set("db", db)
 		c.Set("engine", engine)
+		c.Set("orderService", orderService)
 		c.Next()
 	})
 
@@ -73,9 +49,9 @@ func main() {
 
 // initMarkets define markets here.
 func initMarkets() []*market.MarketInfo {
-	btcMarket := market.NewMarketInfo("BTC/USDT", "BTC", "USDT")
-	ethMarket := market.NewMarketInfo("ETH/USDT", "ETH", "USDT")
-	dotMarket := market.NewMarketInfo("DOT/USDT", "DOT", "USDT")
+	btcMarket := market.NewMarketInfo("BTC-USDT", "BTC", "USDT")
+	ethMarket := market.NewMarketInfo("ETH-USDT", "ETH", "USDT")
+	dotMarket := market.NewMarketInfo("DOT-USDT", "DOT", "USDT")
 
 	return []*market.MarketInfo{btcMarket, ethMarket, dotMarket}
 }
@@ -95,6 +71,8 @@ func registerRouter(r *gin.Engine) {
 	// auth protected
 	auth.DELETE("/users/logout", handlers.Logout)
 	auth.GET("/balances", handlers.GetBalance)
+	auth.POST("/orders/:market", handlers.PlaceOrderHandler)
+	auth.DELETE("/orders/:market/:orderID", handlers.CancelOrderHandler)
 }
 
 func healthcheck(context *gin.Context) {
@@ -104,7 +82,3 @@ func healthcheck(context *gin.Context) {
 func getEthClient() (*ethclient.Client, error) {
 	return ethclient.Dial("http://localhost:8545")
 }
-
-//func httpErrorHandler(err error, c echo.Context) {
-//	fmt.Println(err)
-//}

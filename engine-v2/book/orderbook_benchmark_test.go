@@ -115,7 +115,7 @@ func BenchmarkCancelOrder(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if err := ob.CancelOrder(orders[i].ID); err != nil {
+		if _, err := ob.CancelOrder(orders[i].ID); err != nil {
 			b.Fatalf("CancelOrder failed: %v", err)
 		}
 	}

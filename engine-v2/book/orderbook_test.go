@@ -150,7 +150,7 @@ func TestOrderBook_ConcurrencySafety(t *testing.T) {
 			// Optional small sleep to increase interleaving
 			time.Sleep(time.Microsecond)
 			// Cancel order
-			err := ob.CancelOrder(id)
+			_, err := ob.CancelOrder(id)
 			// Cancellation should succeed
 			if err != nil {
 				t.Errorf("cancel failed for %s: %v", id, err)
@@ -194,7 +194,8 @@ func TestOrderBook_BoundaryScenarios(t *testing.T) {
 	assert(t, 2.0, ob.TotalBidVolume())
 
 	// Clean up
-	assertNoError(t, ob.CancelOrder("A1"))
+	_, err = ob.CancelOrder("A1")
+	assertNoError(t, err)
 }
 
 // Market order tests

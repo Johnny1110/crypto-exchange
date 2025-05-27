@@ -6,6 +6,7 @@ import (
 	"github.com/johnny1110/crypto-exchange/engine-v2/book"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
 	"github.com/johnny1110/crypto-exchange/market"
+	"github.com/labstack/gommon/log"
 	"sync"
 )
 
@@ -35,6 +36,11 @@ func (e *MatchingEngine) GetOrderBook(market string) (*book.OrderBook, error) {
 	return ob, nil
 }
 
+func (e *MatchingEngine) ValidateMarket(market string) bool {
+	_, ok := e.orderbooks[market]
+	return ok
+}
+
 func (e *MatchingEngine) Markets() []string {
 	markets := make([]string, 0, len(e.orderbooks))
 	for m := range e.orderbooks {
@@ -48,13 +54,14 @@ func (e *MatchingEngine) PlaceOrder(market string, orderType book.OrderType, ord
 	if err != nil {
 		return nil, err
 	}
+	log.Infof("[Engine] PlaceOrder, market: [%s], orderType:[%s], orderId:[%s]", market, orderType, order.ID)
 	return ob.PlaceOrder(orderType, order)
 }
 
-func (e *MatchingEngine) CancelOrder(market string, orderID string) error {
+func (e *MatchingEngine) CancelOrder(market string, orderID string) (*model.Order, error) {
 	ob, err := e.GetOrderBook(market)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	return ob.CancelOrder(orderID)
 }

@@ -2,14 +2,17 @@ package handlers
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/johnny1110/crypto-exchange/settings"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
 )
 
 func Register(c *gin.Context) {
 	db := c.MustGet("db").(*sql.DB)
+
 	var req registerReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -42,7 +45,50 @@ func Register(c *gin.Context) {
 		return
 	}
 
+	// create balances data for user
+	allAssets := settings.GetAllAssets()
+	err = createBalanceForUser(db, userID, allAssets)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create user"})
+		return
+	}
+
 	c.JSON(http.StatusCreated, gin.H{"id": userID, "username": req.Username})
+}
+
+// CreateBalanceForUser creates initial zero balances for a new user across given assets.
+func createBalanceForUser(db *sql.DB, userID string, assets []string) error {
+	// Use a transaction to batch inserts
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		} else {
+			tx.Commit()
+		}
+	}()
+
+	// Prepare statement once
+	stmt, err := tx.Prepare(`
+        INSERT INTO balances(user_id, asset, available, locked)
+        VALUES (?, ?, 0, 0)
+        ON CONFLICT(user_id, asset) DO NOTHING
+    `)
+	if err != nil {
+		return fmt.Errorf("prepare stmt: %w", err)
+	}
+	defer stmt.Close()
+
+	// Execute for each asset
+	for _, asset := range assets {
+		if _, err = stmt.Exec(userID, asset); err != nil {
+			return fmt.Errorf("insert balance %s: %w", asset, err)
+		}
+	}
+	return nil
 }
 
 func Login(c *gin.Context) {

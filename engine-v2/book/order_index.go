@@ -28,13 +28,15 @@ func (oi *OrderIndex) Add(node *model.OrderNode) {
 }
 
 // Remove deletes the mapping for the given order ID.
-// Returns an error if the order ID is not found.
-func (oi *OrderIndex) Remove(orderID string) error {
-	if _, found := oi.index[orderID]; !found {
-		return errors.New("order ID not found in index")
+// Returns an order, error if the order ID is not found.
+func (oi *OrderIndex) Remove(orderID string) (*model.Order, error) {
+	entry, found := oi.index[orderID]
+	if !found {
+		return nil, errors.New("order ID not found in index")
 	}
+	order := entry.Node.Order
 	delete(oi.index, orderID)
-	return nil
+	return order, nil
 }
 
 // Get retrieves the indexEntry for the given order ID.
