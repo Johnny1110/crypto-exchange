@@ -33,14 +33,16 @@ const (
 )
 
 type Order struct {
-	ID            string
-	UserID        string
-	Side          Side
-	Price         float64
-	OriginalSize  float64
-	RemainingSize float64
-	Mode          Mode
-	Timestamp     time.Time
+	ID                   string
+	UserID               string
+	Side                 Side
+	Price                float64
+	OriginalSize         float64
+	RemainingSize        float64
+	OriginalQuoteAmount  float64
+	RemainingQuoteAmount float64
+	Mode                 Mode
+	Timestamp            time.Time
 }
 
 func (o *Order) GetStatus() OrderStatus {

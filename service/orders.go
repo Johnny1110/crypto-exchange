@@ -19,13 +19,14 @@ type OrderService struct {
 }
 
 type PlaceOrderRequest struct {
-	UserID    string
-	Market    string
-	Side      model.Side
-	Price     float64
-	Size      float64
-	OrderType book.OrderType
-	Mode      model.Mode
+	UserID      string
+	Market      string
+	Side        model.Side
+	Price       float64
+	Size        float64
+	OrderType   book.OrderType
+	Mode        model.Mode
+	QuoteAmount float64
 }
 
 func (r *PlaceOrderRequest) validate() error {
@@ -35,11 +36,21 @@ func (r *PlaceOrderRequest) validate() error {
 	if r.Market == "" {
 		return errors.New("market is required")
 	}
-	if r.Size <= 0 {
-		return errors.New("size must be greater than zero")
+
+	if r.Side == model.ASK {
+		if r.Size <= 0 {
+			return errors.New("ask order size must be greater than zero")
+		}
 	}
-	if r.OrderType == book.LIMIT && r.Price <= 0 {
-		return errors.New("limit order price must be greater than zero")
+
+	if r.Side == model.BID {
+		if r.OrderType == book.MARKET && r.QuoteAmount <= 0 {
+			return errors.New("bid order quote amount must be greater than zero")
+		}
+	}
+
+	if r.OrderType == book.LIMIT && (r.Price <= 0 || r.Size <= 0) {
+		return errors.New("limit order price and size must be greater than zero")
 	}
 	return nil
 }
@@ -77,12 +88,17 @@ func (s *OrderService) PlaceOrder(req PlaceOrderRequest) (res *PlaceOrderResult,
 		return nil, err
 	}
 
-	// TODO-(fix bug): market ask order freeze zero amount (because price*size=0)
 	var freezeAsset string
 	var freezeAmt float64
 	if req.Side == model.BID {
 		freezeAsset = quote
-		freezeAmt = req.Price * req.Size
+		switch req.OrderType {
+		case book.LIMIT:
+			freezeAmt = req.Price * req.Size
+			break
+		case book.MARKET:
+			freezeAmt = req.QuoteAmount
+		}
 	} else {
 		freezeAsset = base
 		freezeAmt = req.Size
@@ -100,13 +116,18 @@ func (s *OrderService) PlaceOrder(req PlaceOrderRequest) (res *PlaceOrderResult,
 		return nil, errors.New("insufficient balance")
 	}
 
+	// LIMIT BID order size = price/quoteAmt
+	if req.Side == model.BID && req.OrderType == book.LIMIT {
+		req.Size = req.Price / req.QuoteAmount
+	}
+
 	// 2. Persist order
 	orderID := uuid.NewString()
 	now := time.Now()
 	_, err = tx.Exec(
-		`INSERT INTO orders(id,user_id,market,side,price,original_size,remaining_size, type, mode, status,created_at,updated_at)
+		`INSERT INTO orders(id,user_id,market,side,price,original_size,remaining_size, original_quote_amount, remaining_quote_amount, type, mode, status,created_at,updated_at)
          VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
-		orderID, req.UserID, req.Market, req.Side, req.Price, req.Size, req.Size, req.OrderType, req.Mode, model.ORDER_STATUS_NEW, now, now,
+		orderID, req.UserID, req.Market, req.Side, req.Price, req.Size, req.Size, req.QuoteAmount, req.QuoteAmount, req.OrderType, req.Mode, model.ORDER_STATUS_NEW, now, now,
 	)
 	if err != nil {
 		return nil, err
@@ -114,14 +135,16 @@ func (s *OrderService) PlaceOrder(req PlaceOrderRequest) (res *PlaceOrderResult,
 
 	// 3. Match engine
 	order := &model.Order{
-		ID:            orderID,
-		UserID:        req.UserID,
-		Side:          req.Side,
-		Price:         req.Price,
-		OriginalSize:  req.Size,
-		RemainingSize: req.Size,
-		Mode:          req.Mode,
-		Timestamp:     now,
+		ID:                   orderID,
+		UserID:               req.UserID,
+		Side:                 req.Side,
+		Price:                req.Price,
+		OriginalSize:         req.Size,
+		RemainingSize:        req.Size,
+		OriginalQuoteAmount:  req.QuoteAmount,
+		RemainingQuoteAmount: req.QuoteAmount,
+		Mode:                 req.Mode,
+		Timestamp:            now,
 	}
 	trades, err := s.Engine.PlaceOrder(req.Market, req.OrderType, order)
 	if err != nil {

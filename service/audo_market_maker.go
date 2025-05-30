@@ -17,36 +17,36 @@ func (s AutoMakerService) MakeMarket(os *OrderService) {
 	market := "ETH-USDT"
 	// make ETH buy order * 5
 	orderReqList = append(orderReqList, PlaceOrderRequest{
-		s.MakerUID, market, model.BID, 2500, 10, book.LIMIT, model.MAKER,
+		s.MakerUID, market, model.BID, 2500, 10, book.LIMIT, model.MAKER, 25000,
 	})
 	orderReqList = append(orderReqList, PlaceOrderRequest{
-		s.MakerUID, market, model.BID, 2550, 10, book.LIMIT, model.MAKER,
+		s.MakerUID, market, model.BID, 2550, 10, book.LIMIT, model.MAKER, 25500,
 	})
 	orderReqList = append(orderReqList, PlaceOrderRequest{
-		s.MakerUID, market, model.BID, 2600, 10, book.LIMIT, model.MAKER,
+		s.MakerUID, market, model.BID, 2600, 10, book.LIMIT, model.MAKER, 26000,
 	})
 	orderReqList = append(orderReqList, PlaceOrderRequest{
-		s.MakerUID, market, model.BID, 2650, 10, book.LIMIT, model.MAKER,
+		s.MakerUID, market, model.BID, 2650, 10, book.LIMIT, model.MAKER, 26500,
 	})
 	orderReqList = append(orderReqList, PlaceOrderRequest{
-		s.MakerUID, market, model.BID, 2700, 10, book.LIMIT, model.MAKER,
+		s.MakerUID, market, model.BID, 2700, 10, book.LIMIT, model.MAKER, 27000,
 	})
 
 	// make ETH sell order * 5
 	orderReqList = append(orderReqList, PlaceOrderRequest{
-		s.MakerUID, market, model.ASK, 2500, 10, book.LIMIT, model.MAKER,
+		s.MakerUID, market, model.ASK, 2500, 10, book.LIMIT, model.MAKER, 0,
 	})
 	orderReqList = append(orderReqList, PlaceOrderRequest{
-		s.MakerUID, market, model.ASK, 2550, 10, book.LIMIT, model.MAKER,
+		s.MakerUID, market, model.ASK, 2550, 10, book.LIMIT, model.MAKER, 0,
 	})
 	orderReqList = append(orderReqList, PlaceOrderRequest{
-		s.MakerUID, market, model.ASK, 2600, 10, book.LIMIT, model.MAKER,
+		s.MakerUID, market, model.ASK, 2600, 10, book.LIMIT, model.MAKER, 0,
 	})
 	orderReqList = append(orderReqList, PlaceOrderRequest{
-		s.MakerUID, market, model.ASK, 2650, 10, book.LIMIT, model.MAKER,
+		s.MakerUID, market, model.ASK, 2650, 10, book.LIMIT, model.MAKER, 0,
 	})
 	orderReqList = append(orderReqList, PlaceOrderRequest{
-		s.MakerUID, market, model.ASK, 2700, 10, book.LIMIT, model.MAKER,
+		s.MakerUID, market, model.ASK, 2700, 10, book.LIMIT, model.MAKER, 0,
 	})
 
 	for _, req := range orderReqList {
