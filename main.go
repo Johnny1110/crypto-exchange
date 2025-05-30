@@ -9,16 +9,24 @@ import (
 	"github.com/johnny1110/crypto-exchange/market"
 	"github.com/johnny1110/crypto-exchange/service"
 	"log"
-	"net/http"
+	// for windows
+	//_ "modernc.org/sqlite"
 
-	_ "modernc.org/sqlite"
+	// for mac
+	_ "github.com/mattn/go-sqlite3"
+	"net/http"
 )
 
 func main() {
-	db, err := sql.Open("sqlite", "file:exg.db")
+	// for windows
+	//db, err := sql.Open("sqlite", "file:exg.db")
+	// for Mac
+	db, err := sql.Open("sqlite3", "./exg.db")
+
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}
+
 	defer db.Close()
 
 	markets := initMarkets()
@@ -50,6 +58,9 @@ func main() {
 
 	registerRouter(r)
 
+	// it gonna iterate all the market, and do refresh the orderbook snapshot
+	engine.StartSnapshotRefresher()
+
 	r.Run(":8080")
 }
 
@@ -72,6 +83,9 @@ func registerRouter(r *gin.Engine) {
 	// admin access
 	r.POST("/admin/manual-adjustment", handlers.ManualAdjustment)
 	r.POST("/admin/auto-market-maker", handlers.AutoMarketMaker)
+
+	// orderbook etc.
+	r.GET("/orderbooks/:market/snapshot", handlers.OrderbooksSnapshot)
 
 	// auth middleware
 	auth := r.Group("/", handlers.AuthMiddleware)

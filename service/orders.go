@@ -70,6 +70,7 @@ func (s *OrderService) PlaceOrder(req PlaceOrderRequest) (res *PlaceOrderResult,
 	}
 	defer func() {
 		if err != nil {
+			log.Error("[OrderService] PlaceOrder rollback, err:", err.Error())
 			tx.Rollback()
 		} else {
 			tx.Commit()
@@ -79,36 +80,41 @@ func (s *OrderService) PlaceOrder(req PlaceOrderRequest) (res *PlaceOrderResult,
 	// 0. basic request params check
 	err = req.validate()
 	if err != nil {
+		log.Warn("[OrderService] validate req err:", err.Error())
 		return nil, err
 	}
 
 	// 1. Freeze funds based on market and side
 	base, quote, err := s.ParseMarket(req.Market)
 	if err != nil {
+		log.Error("[OrderService] ParseMarket err:", err.Error())
 		return nil, err
 	}
-
 	var freezeAsset string
 	var freezeAmt float64
 	if req.Side == model.BID {
 		freezeAsset = quote
 		switch req.OrderType {
 		case book.LIMIT:
+			// limit buy order, freeze price*size
 			freezeAmt = req.Price * req.Size
 			break
 		case book.MARKET:
+			// market order freeze quoteAmt
 			freezeAmt = req.QuoteAmount
 		}
 	} else {
+		// all ask order just freeze base asset size
 		freezeAsset = base
 		freezeAmt = req.Size
 	}
-
+	// freeze user balances (DB)
 	updateRes, err := tx.Exec(
 		`UPDATE balances SET available=available-?, locked=locked+? WHERE user_id=? AND asset=? AND available>=?`,
 		freezeAmt, freezeAmt, req.UserID, freezeAsset, freezeAmt,
 	)
 	if err != nil {
+		log.Error("[PlaceOrder] UpdateBalances err:", err.Error())
 		return nil, err
 	}
 	if rows, _ := updateRes.RowsAffected(); rows == 0 {
@@ -116,18 +122,13 @@ func (s *OrderService) PlaceOrder(req PlaceOrderRequest) (res *PlaceOrderResult,
 		return nil, errors.New("insufficient balance")
 	}
 
-	// LIMIT BID order size = price/quoteAmt
-	if req.Side == model.BID && req.OrderType == book.LIMIT {
-		req.Size = req.Price / req.QuoteAmount
-	}
-
 	// 2. Persist order
 	orderID := uuid.NewString()
 	now := time.Now()
 	_, err = tx.Exec(
-		`INSERT INTO orders(id,user_id,market,side,price,original_size,remaining_size, original_quote_amount, remaining_quote_amount, type, mode, status,created_at,updated_at)
-         VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
-		orderID, req.UserID, req.Market, req.Side, req.Price, req.Size, req.Size, req.QuoteAmount, req.QuoteAmount, req.OrderType, req.Mode, model.ORDER_STATUS_NEW, now, now,
+		`INSERT INTO orders(id,user_id,market,side,price,original_size,remaining_size, quote_amount, type, mode, status,created_at,updated_at)
+         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		orderID, req.UserID, req.Market, req.Side, req.Price, req.Size, req.Size, req.QuoteAmount, req.OrderType, req.Mode, model.ORDER_STATUS_NEW, now, now,
 	)
 	if err != nil {
 		return nil, err
@@ -135,16 +136,15 @@ func (s *OrderService) PlaceOrder(req PlaceOrderRequest) (res *PlaceOrderResult,
 
 	// 3. Match engine
 	order := &model.Order{
-		ID:                   orderID,
-		UserID:               req.UserID,
-		Side:                 req.Side,
-		Price:                req.Price,
-		OriginalSize:         req.Size,
-		RemainingSize:        req.Size,
-		OriginalQuoteAmount:  req.QuoteAmount,
-		RemainingQuoteAmount: req.QuoteAmount,
-		Mode:                 req.Mode,
-		Timestamp:            now,
+		ID:            orderID,
+		UserID:        req.UserID,
+		Side:          req.Side,
+		Price:         req.Price,
+		OriginalSize:  req.Size,
+		RemainingSize: req.Size,
+		QuoteAmount:   req.QuoteAmount,
+		Mode:          req.Mode,
+		Timestamp:     now,
 	}
 	trades, err := s.Engine.PlaceOrder(req.Market, req.OrderType, order)
 	if err != nil {
@@ -162,9 +162,9 @@ func (s *OrderService) PlaceOrder(req PlaceOrderRequest) (res *PlaceOrderResult,
 		return nil, err
 	}
 
-	// 4. Persist trades and update counterparty orders & balance
+	// 6. Persist trades and update counterparty orders & balance
 	for _, trade := range trades {
-		// 4-1. insert trade record
+		// 6-1. insert trade record
 		_, err := tx.Exec(
 			`INSERT INTO trades(bid_order_id, ask_order_id, price, size, timestamp)
              VALUES(?,?,?,?,?)`,
@@ -175,8 +175,10 @@ func (s *OrderService) PlaceOrder(req PlaceOrderRequest) (res *PlaceOrderResult,
 			return nil, err
 		}
 
-		// 4-2. update counterparty order
-		counterOrderID := trade.GetCounterOrderID(order.Side)
+		// 6-2. update counterparty order
+		counterSide := order.CounterSide()
+		counterOrderID := trade.GeOrderIDBySide(counterSide)
+
 		err = s.updateCounterOrder(tx, &trade, counterOrderID)
 
 		if err != nil {
@@ -184,8 +186,8 @@ func (s *OrderService) PlaceOrder(req PlaceOrderRequest) (res *PlaceOrderResult,
 			return nil, err
 		}
 
-		// 4-3. Settlement for bid & ask user.
-		err = s.settleTrade(tx, &trade, base, quote)
+		// 6-3. Settlement for bid & ask user.
+		err = s.settleTrade(tx, &trade, order, base, quote)
 		if err != nil {
 			log.Error("[PlaceOrder] settle trade failed.", err)
 			return nil, err
@@ -252,7 +254,7 @@ func (s *OrderService) ParseMarket(market string) (string, string, error) {
 	return ob.MarketInfo().BaseAsset, ob.MarketInfo().QuoteAsset, nil
 }
 
-func (s *OrderService) updateCounterOrder(tx *sql.Tx, trade *book.Trade, orderID string) error {
+func (s *OrderService) updateCounterOrder(tx *sql.Tx, trade *book.Trade, counterOrderID string) error {
 	_, err := tx.Exec(`
 			UPDATE orders SET remaining_size = remaining_size - ?,
 			                  status = CASE
@@ -261,37 +263,42 @@ func (s *OrderService) updateCounterOrder(tx *sql.Tx, trade *book.Trade, orderID
 								ELSE status END,
 			                  updated_at = ?
 			WHERE id = ?
-		`, trade.Size, trade.Size, model.ORDER_STATUS_FILLED, trade.Size, model.ORDER_STATUS_PARTIAL, time.Now(), orderID)
+		`, trade.Size, trade.Size, model.ORDER_STATUS_FILLED, trade.Size, model.ORDER_STATUS_PARTIAL, time.Now(), counterOrderID)
 	return err
 }
 
 // settleTrade
 // bid user (+ baseAsset, - quoteAsset)
 // ask user (- baseAsset, + quoteAsset)
-func (s *OrderService) settleTrade(tx *sql.Tx, trade *book.Trade, baseAsset, quoteAsset string) error {
+func (s *OrderService) settleTrade(tx *sql.Tx, trade *book.Trade, eatenOrder *model.Order, baseAsset, quoteAsset string) error {
 	var err error
-	// process bid user + baseAsset
+	// 1. process bid user balance (+)baseAsset
 	_, err = tx.Exec(`
 			UPDATE balances SET available = available + ? WHERE user_id = ? AND asset = ?
 		`, trade.Size, trade.BidUserID, baseAsset)
 	if err != nil {
 		return err
 	}
-	// process bid user - quoteAsset (locked)
+	// 2. process bid user balance (-)quoteAsset (locked)
+	var bidSideQuoteAmt = trade.Size * trade.Price
+	if eatenOrder.Side == model.BID {
+		// If incomingOrder is bid, then unfrozen quote amt = order.LimitPrice * trade.Size
+		bidSideQuoteAmt = eatenOrder.Price * trade.Size
+	}
 	_, err = tx.Exec(`
 			UPDATE balances SET locked = locked - ? WHERE user_id = ? AND asset = ?
-		`, trade.Size*trade.Price, trade.BidUserID, quoteAsset)
+		`, bidSideQuoteAmt, trade.BidUserID, quoteAsset)
 	if err != nil {
 		return err
 	}
-	// process ask user - baseAsset (locked)
+	// 3. process ask user (- baseAsset) (locked)
 	_, err = tx.Exec(`
 			UPDATE balances SET locked = locked - ? WHERE user_id = ? AND asset = ?
 		`, trade.Size, trade.AskUserID, baseAsset)
 	if err != nil {
 		return err
 	}
-	// process ask user + quoteAsset
+	// 4. process ask user (+ quoteAsset)
 	_, err = tx.Exec(`
 			UPDATE balances SET available = available + ? WHERE user_id = ? AND asset = ?
 		`, trade.Size*trade.Price, trade.AskUserID, quoteAsset)

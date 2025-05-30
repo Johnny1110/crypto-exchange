@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
+	"github.com/johnny1110/crypto-exchange/engine-v2/util"
 	"github.com/johnny1110/crypto-exchange/market"
 	"github.com/labstack/gommon/log"
 	"math"
@@ -41,14 +42,40 @@ func (t Trade) String() string {
 	)
 }
 
-func (t Trade) GetCounterOrderID(side model.Side) string {
+func (t Trade) GeOrderIDBySide(side model.Side) string {
 	switch side {
 	case model.BID:
-		return t.AskOrderID
-	case model.ASK:
 		return t.BidOrderID
+	case model.ASK:
+		return t.AskOrderID
 	}
 	panic("unreachable")
+}
+
+// BookSnapshot only hold bid highest 20, and ask lowest 20.
+type BookSnapshot struct {
+	// key: priceLevel value: volume
+	BidSide []*PriceVolumePair
+	AskSide []*PriceVolumePair
+}
+
+type PriceVolumePair struct {
+	Price  float64 `json:"price"`
+	Volume float64 `json:"volume"`
+}
+
+func NewPriceVolumePair(price float64, volume float64) *PriceVolumePair {
+	return &PriceVolumePair{
+		Price:  price,
+		Volume: volume,
+	}
+}
+
+func NewBookSnapshot() *BookSnapshot {
+	return &BookSnapshot{
+		BidSide: make([]*PriceVolumePair, 0, 20),
+		AskSide: make([]*PriceVolumePair, 0, 20),
+	}
 }
 
 // OrderBook maintains buy and sell sides, and a global index for fast order lookup.
@@ -58,7 +85,9 @@ type OrderBook struct {
 	askSide     *BookSide
 	orderIndex  *OrderIndex
 	latestPrice float64
-	mu          sync.RWMutex
+	obMu        sync.RWMutex  // OrderBook RW mutex
+	snapshot    *BookSnapshot // best top 20 price snapshot
+	snapshotMu  sync.RWMutex  // BookSnapshot RW mutex
 }
 
 // NewOrderBook creates a new OrderBook instance.
@@ -68,14 +97,69 @@ func NewOrderBook(market *market.MarketInfo) *OrderBook {
 		bidSide:    NewBookSide(true),
 		askSide:    NewBookSide(false),
 		orderIndex: NewOrderIndex(),
+		snapshot:   NewBookSnapshot(),
+	}
+}
+
+// Snapshot return snapshot
+func (ob *OrderBook) Snapshot() BookSnapshot {
+	ob.snapshotMu.Lock()
+	defer ob.snapshotMu.Unlock()
+	bidCopy := make([]*PriceVolumePair, len(ob.snapshot.BidSide))
+	copy(bidCopy, ob.snapshot.BidSide)
+
+	askCopy := make([]*PriceVolumePair, len(ob.snapshot.AskSide))
+	copy(askCopy, ob.snapshot.AskSide)
+
+	return BookSnapshot{
+		BidSide: bidCopy,
+		AskSide: askCopy,
+	}
+}
+
+// Refresh Do refresh snapshot, read lock orderbook, and write lock snapshot
+// Run a 500 ms job to refresh
+func (ob *OrderBook) RefreshSnapshot() {
+	ob.obMu.RLock()
+	ob.snapshotMu.Lock()
+	defer ob.snapshotMu.Unlock()
+	defer ob.obMu.RUnlock()
+
+	// clean bidSide snapshot
+	ob.snapshot.BidSide = ob.snapshot.BidSide[:0]
+	// iterate bidPriceLevel from max collect top 20 (price:volume) and save into ob.snapshot
+	it := ob.bidSide.priceLevels.Iterator()
+	it.End() // move to the largest key
+	count := 0
+	for it.Prev() && count < 20 {
+		price := it.Key().(float64)
+		deque := it.Value().(*util.OrderNodeDeque)
+		volume := deque.Volume()
+		ob.snapshot.BidSide = append(ob.snapshot.BidSide, NewPriceVolumePair(price, volume))
+		count++
+	}
+
+	// clean askSide snapshot
+	ob.snapshot.AskSide = ob.snapshot.AskSide[:0]
+	// iterate askPriceLevel from min collect top 20 (price:volume) and save into ob.snapshot
+	it = ob.askSide.priceLevels.Iterator()
+	it.Begin() // move to smallest key
+	count = 0
+	for it.Next() && count < 20 {
+		price := it.Key().(float64)
+		deque := it.Value().(*util.OrderNodeDeque)
+		volume := deque.Volume()
+		ob.snapshot.AskSide = append(ob.snapshot.AskSide, NewPriceVolumePair(price, volume))
+		count++
 	}
 }
 
 // PlaceOrder place order into order book, support LIMIT/MAKER, LIMIT/TAKER and MARKET 3 kind of scenario
 func (ob *OrderBook) PlaceOrder(orderType OrderType, order *model.Order) ([]Trade, error) {
-	ob.mu.Lock()
-	defer ob.mu.Unlock()
+	ob.obMu.Lock()
+	defer ob.obMu.Unlock()
 
+	// check id exists
 	if ob.orderIndex.OrderIdExist(order.ID) {
 		return nil, fmt.Errorf("order ID %s already exists", order.ID)
 	}
@@ -134,8 +218,8 @@ func (ob *OrderBook) makeLimitOrder(order *model.Order) error {
 
 // CancelOrder removes an existing order from the book by its ID.
 func (ob *OrderBook) CancelOrder(orderID string) (*model.Order, error) {
-	ob.mu.Lock()
-	defer ob.mu.Unlock()
+	ob.obMu.Lock()
+	defer ob.obMu.Unlock()
 
 	// Lookup index
 	side, price, node, found := ob.orderIndex.Get(orderID)
@@ -257,20 +341,20 @@ func (ob *OrderBook) oppositeSide(side model.Side) *BookSide {
 }
 
 func (ob *OrderBook) TotalAskVolume() float64 {
-	ob.mu.RLock()
-	defer ob.mu.RUnlock()
+	ob.obMu.RLock()
+	defer ob.obMu.RUnlock()
 	return ob.askSide.TotalVolume()
 }
 
 func (ob *OrderBook) TotalBidVolume() float64 {
-	ob.mu.RLock()
-	defer ob.mu.RUnlock()
+	ob.obMu.RLock()
+	defer ob.obMu.RUnlock()
 	return ob.bidSide.TotalVolume()
 }
 
 func (ob *OrderBook) LatestPrice() float64 {
-	ob.mu.RLock()
-	defer ob.mu.RUnlock()
+	ob.obMu.RLock()
+	defer ob.obMu.RUnlock()
 	return ob.latestPrice
 }
 
@@ -291,8 +375,8 @@ func (ob *OrderBook) addOrderIndex(node *model.OrderNode) {
 }
 
 func (ob *OrderBook) BestBid() (float64, float64, error) {
-	ob.mu.RLock()
-	defer ob.mu.RUnlock()
+	ob.obMu.RLock()
+	defer ob.obMu.RUnlock()
 	bestPrice, err := ob.bidSide.BestPrice()
 	if err != nil {
 		return 0, 0, err
@@ -302,8 +386,8 @@ func (ob *OrderBook) BestBid() (float64, float64, error) {
 }
 
 func (ob *OrderBook) BestAsk() (float64, float64, error) {
-	ob.mu.RLock()
-	defer ob.mu.RUnlock()
+	ob.obMu.RLock()
+	defer ob.obMu.RUnlock()
 
 	bestPrice, err := ob.askSide.BestPrice()
 	if err != nil {

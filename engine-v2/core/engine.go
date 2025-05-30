@@ -8,6 +8,7 @@ import (
 	"github.com/johnny1110/crypto-exchange/market"
 	"github.com/labstack/gommon/log"
 	"sync"
+	"time"
 )
 
 type MatchingEngine struct {
@@ -54,7 +55,9 @@ func (e *MatchingEngine) PlaceOrder(market string, orderType book.OrderType, ord
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("[Engine] PlaceOrder, market: [%s], orderType:[%s], orderId:[%s]", market, orderType, order.ID)
+	log.Infof("[Engine] PlaceOrder, market: [%s], type:[%v], mode:[%v], side:[%v] orderId:[%s], prize:[%v], size:[%v], quoteAmt:[%v]",
+		market, orderType, order.Mode, order.Side, order.ID, order.Price, order.RemainingSize, order.QuoteAmount)
+
 	return ob.PlaceOrder(orderType, order)
 }
 
@@ -75,4 +78,22 @@ func (e *MatchingEngine) Snapshot(market string) (bidPrice, bidSize, askPrice, a
 	bidPrice, bidSize, _ = ob.BestBid()
 	askPrice, askSize, _ = ob.BestAsk()
 	return
+}
+
+func (e *MatchingEngine) StartSnapshotRefresher() {
+
+	ticker := time.NewTicker(300 * time.Millisecond)
+
+	go func() {
+		for range ticker.C {
+			for _, market := range e.Markets() {
+				ob, err := e.GetOrderBook(market)
+				if err != nil {
+					log.Errorf("[Engine] StartSnapshotRefresher: GetOrderBook err: %v", err)
+				} else {
+					ob.RefreshSnapshot()
+				}
+			}
+		}
+	}()
 }

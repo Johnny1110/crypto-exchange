@@ -17,20 +17,19 @@ CREATE TABLE balances
 
 CREATE TABLE orders
 (
-    id                     TEXT PRIMARY KEY,
-    user_id                TEXT,
-    market                 TEXT,    -- ex: BTC/USDT ETH/USDT
-    side                   INTEGER, -- 0=Bid,1=Ask
-    price                  REAL,
-    original_size          REAL,
-    remaining_size         REAL,
-    original_quote_amount  REAL,
-    remaining_quote_amount REAL,
-    type                   INTEGER, -- 0=LIMIT,1=MARKET
-    mode                   INTEGER, -- 0=MAKER,1=TAKER
-    status                 TEXT,    -- NEW, FILLED, CANCELED
-    created_at             DATETIME,
-    updated_at             DATETIME
+    id             TEXT PRIMARY KEY,
+    user_id        TEXT,
+    market         TEXT,    -- ex: BTC/USDT ETH/USDT
+    side           INTEGER, -- 0=Bid,1=Ask
+    price          REAL,
+    original_size  REAL,
+    remaining_size REAL,
+    quote_amount   REAL,
+    type           INTEGER, -- 0=LIMIT,1=MARKET
+    mode           INTEGER, -- 0=MAKER,1=TAKER
+    status         TEXT,    -- NEW, FILLED, CANCELED
+    created_at     DATETIME,
+    updated_at     DATETIME
 );
 
 create table trades_dg_tmp
