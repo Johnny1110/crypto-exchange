@@ -55,8 +55,9 @@ func (t Trade) GeOrderIDBySide(side model.Side) string {
 // BookSnapshot only hold bid highest 20, and ask lowest 20.
 type BookSnapshot struct {
 	// key: priceLevel value: volume
-	BidSide []*PriceVolumePair
-	AskSide []*PriceVolumePair
+	BidSide     []*PriceVolumePair
+	AskSide     []*PriceVolumePair
+	LatestPrice float64
 }
 
 type PriceVolumePair struct {
@@ -73,8 +74,9 @@ func NewPriceVolumePair(price float64, volume float64) *PriceVolumePair {
 
 func NewBookSnapshot() *BookSnapshot {
 	return &BookSnapshot{
-		BidSide: make([]*PriceVolumePair, 0, 20),
-		AskSide: make([]*PriceVolumePair, 0, 20),
+		BidSide:     make([]*PriceVolumePair, 0, 20),
+		AskSide:     make([]*PriceVolumePair, 0, 20),
+		LatestPrice: 0.0,
 	}
 }
 
@@ -112,8 +114,9 @@ func (ob *OrderBook) Snapshot() BookSnapshot {
 	copy(askCopy, ob.snapshot.AskSide)
 
 	return BookSnapshot{
-		BidSide: bidCopy,
-		AskSide: askCopy,
+		BidSide:     bidCopy,
+		AskSide:     askCopy,
+		LatestPrice: ob.snapshot.LatestPrice,
 	}
 }
 
@@ -152,6 +155,8 @@ func (ob *OrderBook) RefreshSnapshot() {
 		ob.snapshot.AskSide = append(ob.snapshot.AskSide, NewPriceVolumePair(price, volume))
 		count++
 	}
+
+	ob.snapshot.LatestPrice = ob.latestPrice
 }
 
 // PlaceOrder place order into order book, support LIMIT/MAKER, LIMIT/TAKER and MARKET 3 kind of scenario

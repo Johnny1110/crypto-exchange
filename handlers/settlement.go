@@ -3,13 +3,14 @@ package handlers
 import (
 	"database/sql"
 	"github.com/gin-gonic/gin"
+	"github.com/johnny1110/crypto-exchange/dto"
 	"net/http"
 )
 
 func ManualAdjustment(c *gin.Context) {
 	db := c.MustGet("db").(*sql.DB)
 
-	var req settlementReq
+	var req dto.SettlementReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/johnny1110/crypto-exchange/dto"
 	"github.com/johnny1110/crypto-exchange/engine-v2/core"
 	"github.com/johnny1110/crypto-exchange/service"
 	"net/http"
@@ -21,7 +22,7 @@ func PlaceOrderHandler(c *gin.Context) {
 		return
 	}
 
-	var req orderReq
+	var req dto.OrderReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return

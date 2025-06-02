@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/johnny1110/crypto-exchange/dto"
 	"github.com/johnny1110/crypto-exchange/settings"
 	"github.com/labstack/gommon/log"
 	"golang.org/x/crypto/bcrypt"
@@ -14,7 +15,7 @@ import (
 func Register(c *gin.Context) {
 	db := c.MustGet("db").(*sql.DB)
 
-	var req registerReq
+	var req dto.RegisterReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -95,7 +96,7 @@ func createBalanceForUser(db *sql.DB, userID string, assets []string) error {
 
 func Login(c *gin.Context) {
 	db := c.MustGet("db").(*sql.DB)
-	var req loginReq
+	var req dto.LoginReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

@@ -7,6 +7,7 @@ import (
 	"github.com/johnny1110/crypto-exchange/engine-v2/core"
 	"github.com/johnny1110/crypto-exchange/handlers"
 	"github.com/johnny1110/crypto-exchange/market"
+	"github.com/johnny1110/crypto-exchange/security"
 	"github.com/johnny1110/crypto-exchange/service"
 	"log"
 	// for windows
@@ -18,11 +19,7 @@ import (
 )
 
 func main() {
-	// for windows
-	//db, err := sql.Open("sqlite", "file:exg.db")
-	// for Mac
-	db, err := sql.Open("sqlite3", "./exg.db")
-
+	db, err := initDB()
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}
@@ -64,6 +61,18 @@ func main() {
 	r.Run(":8080")
 }
 
+func initDB() (*sql.DB, error) {
+	// for windows
+	//db, err := sql.Open("sqlite", "file:exg.db")
+	// for Mac
+	db, err := sql.Open("sqlite3", "./exg.db")
+	if err != nil {
+		return nil, err
+	}
+	db.SetMaxOpenConns(1)
+	return db, err
+}
+
 // initMarkets define markets here.
 func initMarkets() []*market.MarketInfo {
 	btcMarket := market.NewMarketInfo("BTC-USDT", "BTC", "USDT")
@@ -88,7 +97,7 @@ func registerRouter(r *gin.Engine) {
 	r.GET("/orderbooks/:market/snapshot", handlers.OrderbooksSnapshot)
 
 	// auth middleware
-	auth := r.Group("/", handlers.AuthMiddleware)
+	auth := r.Group("/", security.AuthMiddleware)
 	// auth protected
 	auth.DELETE("/users/logout", handlers.Logout)
 	auth.GET("/balances", handlers.GetBalance)
