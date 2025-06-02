@@ -22,7 +22,7 @@ Response-Body:
 ```json
 {
     "data": {
-        `"BidSide": [
+        "BidSide": [
             {
                 "price": 2700,
                 "volume": 10
@@ -65,7 +65,7 @@ Response-Body:
                 "price": 2700,
                 "volume": 10
             }
-        ]`
+        ]
     }
 }
 ```

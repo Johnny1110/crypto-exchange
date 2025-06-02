@@ -9,10 +9,10 @@ Method: POST
 Request-Body:
 ```json
 {
-"username": "johnny",
-"secret": "frizo", // static string
-"amount": 3000,
-"asset": "USDT"
+    "username": "johnny",
+    "secret": "frizo", // static string
+    "amount": 3000,
+    "asset": "USDT"
 }
 ```
 
