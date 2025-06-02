@@ -10,8 +10,8 @@ Request-Body:
 
 ```json
 {
-"username": "johnny",
-"password": "1234"
+    "username": "johnny",
+    "password": "1234"
 }
 ```
 
@@ -25,8 +25,8 @@ Request-Body:
 
 ```json
 {
-"username": "johnny",
-"password": "1234"
+    "username": "johnny",
+    "password": "1234"
 }
 ```
 
@@ -34,7 +34,7 @@ Response-Body:
 
 ```
 {
-"token": "94a2cc50-5478-48be-8cd5-d4fc486fa99c"
+    "token": "94a2cc50-5478-48be-8cd5-d4fc486fa99c"
 }
 ```
 
