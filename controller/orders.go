@@ -12,9 +12,20 @@ type OrderController struct {
 	orderService service.IOrderService
 }
 
+func NewOrderController(orderService service.IOrderService) *OrderController {
+	return &OrderController{
+		orderService: orderService,
+	}
+}
+
 func (c OrderController) PlaceOrder(context *gin.Context) {
 	userID := context.MustGet("userId").(string)
 	market := context.Param("market") // router is /:market/order
+
+	if userID == "" || market == "" {
+		context.JSON(http.StatusBadRequest, HandleInvalidInput())
+		return
+	}
 
 	var req dto.OrderReq
 	if err := context.ShouldBindJSON(&req); err != nil {
@@ -38,6 +49,11 @@ func (c OrderController) CancelOrder(context *gin.Context) {
 	orderID := context.Param("orderId")
 	market := context.Param("market") // router is /:market/order
 
+	if userID == "" || orderID == "" || market == "" {
+		context.JSON(http.StatusBadRequest, HandleInvalidInput())
+		return
+	}
+
 	log.Infof("[OrderController] Canceling order: market:[%s], userID:[%s], orderID: [%s]", market, userID, orderID)
 
 	order, err := c.orderService.CancelOrder(context.Request.Context(), market, userID, orderID)
@@ -47,10 +63,4 @@ func (c OrderController) CancelOrder(context *gin.Context) {
 	}
 
 	context.JSON(http.StatusOK, HandleSuccess(order))
-}
-
-func NewOrderController(orderService service.IOrderService) *OrderController {
-	return &OrderController{
-		orderService: orderService,
-	}
 }

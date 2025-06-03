@@ -99,7 +99,7 @@ func setupRoutes(
 		private.GET("/balances", balanceController.GetBalances)
 		// orders
 		private.POST("/orders/:market", orderController.PlaceOrder)
-		private.DELETE("/orders/:market/:orderID", orderController.CancelOrder)
+		private.DELETE("/orders/:market/:orderId", orderController.CancelOrder)
 
 	}
 
