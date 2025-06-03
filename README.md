@@ -35,6 +35,8 @@ $> node node_modules/.bin/ganache
     > go run
     ```
 
+    It will listen on port:8080
+
 <br>
 
 * Database
