@@ -5,7 +5,9 @@
 ## Get Balance Info
 
 URI: `/api/v1/balances`
+
 Method: GET
+
 Header:
 ```
 Authorization: string (login token)

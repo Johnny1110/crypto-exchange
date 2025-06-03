@@ -7,10 +7,10 @@
 Display top 20 bids/asks price volume pair
 
 URI: `/api/v1/orderbooks/{market}/snapshot`
+
 Method: GET
 
 Path-Param:
-
 ```
 market: string (e.g. ETH-USDT, BTC-USDT, DOT-USDT)
 ```

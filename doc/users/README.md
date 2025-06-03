@@ -5,7 +5,9 @@
 ## Register
 
 URI: `/api/v1/users/register`
+
 Method: POST
+
 Request-Body:
 
 ```json
@@ -32,7 +34,9 @@ Response-Body:
 ## Login
 
 URI: `/api/v1/users/login`
+
 Method: POST
+
 Request-Body:
 
 ```json
@@ -59,6 +63,7 @@ Response-Body:
 ## Logout
 
 URI: `/api/v1/users/logout`
+
 Method: POST
 
 Header:
