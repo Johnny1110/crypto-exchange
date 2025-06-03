@@ -34,6 +34,7 @@ type IBalanceRepository interface {
 	UnlockedByUserIdAndAsset(ctx context.Context, db DBExecutor, userID, asset string, amount float64) error
 	// BatchCreate batch insert by userId and assets slice. available and locked default = 0.0
 	BatchCreate(ctx context.Context, db DBExecutor, userId string, assets []string) error
+	UpdateAsset(ctx context.Context, db DBExecutor, userId string, asset string, availableChanging float64, lockedChanging float64) error
 }
 
 type IOrderRepository interface {
@@ -42,8 +43,9 @@ type IOrderRepository interface {
 	GetOrderByOrderId(ctx context.Context, db DBExecutor, orderId string) (*dto.Order, error)
 	GetOrdersByUserIdAndStatus(ctx context.Context, db DBExecutor, userId string, status model.OrderStatus) ([]*dto.Order, error)
 	GetOrdersByUserIdAndStatuses(ctx context.Context, db *sql.DB, id string, statuses []model.OrderStatus) ([]*dto.Order, error)
+	DecreaseRemainingSize(ctx context.Context, tx *sql.Tx, orderId string, decreasingSize float64) error
 }
 
 type ITradeRepository interface {
-	BatchInsert(ctx context.Context, db DBExecutor, trades []*book.Trade) error
+	BatchInsert(ctx context.Context, db DBExecutor, trades []book.Trade) error
 }

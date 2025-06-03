@@ -13,18 +13,18 @@ func mockOrderBook(t *testing.T) *OrderBook {
 
 	marketMakerName := "supermaker"
 	// make some bid order (total 5 qty)
-	bidOrder_1 := model.NewOrder("B01", marketMakerName, model.BID, 2100, 5, model.MAKER)
-	bidOrder_2 := model.NewOrder("B02", marketMakerName, model.BID, 2150, 5, model.MAKER)
-	bidOrder_3 := model.NewOrder("B03", marketMakerName, model.BID, 2200, 5, model.MAKER)
-	bidOrder_4 := model.NewOrder("B04", marketMakerName, model.BID, 2250, 5, model.MAKER)
-	bidOrder_5 := model.NewOrder("B05", marketMakerName, model.BID, 2300, 5, model.MAKER)
+	bidOrder_1 := model.NewOrder("B01", marketMakerName, model.BID, 2100, 5, 0, model.MAKER)
+	bidOrder_2 := model.NewOrder("B02", marketMakerName, model.BID, 2150, 5, 0, model.MAKER)
+	bidOrder_3 := model.NewOrder("B03", marketMakerName, model.BID, 2200, 5, 0, model.MAKER)
+	bidOrder_4 := model.NewOrder("B04", marketMakerName, model.BID, 2250, 5, 0, model.MAKER)
+	bidOrder_5 := model.NewOrder("B05", marketMakerName, model.BID, 2300, 5, 0, model.MAKER)
 
 	// make some ask order (total 5 qty)
-	askOrder_1 := model.NewOrder("A01", marketMakerName, model.ASK, 2100, 4, model.MAKER)
-	askOrder_2 := model.NewOrder("A02", marketMakerName, model.ASK, 2150, 4, model.MAKER)
-	askOrder_3 := model.NewOrder("A03", marketMakerName, model.ASK, 2200, 4, model.MAKER)
-	askOrder_4 := model.NewOrder("A04", marketMakerName, model.ASK, 2250, 4, model.MAKER)
-	askOrder_5 := model.NewOrder("A05", marketMakerName, model.ASK, 2300, 4, model.MAKER)
+	askOrder_1 := model.NewOrder("A01", marketMakerName, model.ASK, 2100, 4, 0, model.MAKER)
+	askOrder_2 := model.NewOrder("A02", marketMakerName, model.ASK, 2150, 4, 0, model.MAKER)
+	askOrder_3 := model.NewOrder("A03", marketMakerName, model.ASK, 2200, 4, 0, model.MAKER)
+	askOrder_4 := model.NewOrder("A04", marketMakerName, model.ASK, 2250, 4, 0, model.MAKER)
+	askOrder_5 := model.NewOrder("A05", marketMakerName, model.ASK, 2300, 4, 0, model.MAKER)
 
 	ob.PlaceOrder(LIMIT, bidOrder_1)
 	ob.PlaceOrder(LIMIT, bidOrder_2)
@@ -51,7 +51,7 @@ func mockOrderBook(t *testing.T) *OrderBook {
 
 func TestOrderBook_AddSameOrderID(t *testing.T) {
 	ob := mockOrderBook(t)
-	bidOrder_1 := model.NewOrder("B01", "test01", model.BID, 2100, 5, model.MAKER)
+	bidOrder_1 := model.NewOrder("B01", "test01", model.BID, 2100, 5, 0, model.MAKER)
 	var _, err_1 = ob.PlaceOrder(LIMIT, bidOrder_1)
 	fmt.Println(err_1)
 	assert(t, true, err_1 != nil)
@@ -75,7 +75,7 @@ func TestOrderBook_TakeLimitOrder_BID(t *testing.T) {
 	// all ask volume in askSide is 20
 	// price is from 2100 ~ 2300
 	ob := mockOrderBook(t)
-	bidOrder_qty1 := model.NewOrder("test_bid_01", "test01", model.BID, 2100, 1, model.TAKER)
+	bidOrder_qty1 := model.NewOrder("test_bid_01", "test01", model.BID, 2100, 1, 0, model.TAKER)
 	trades, _ := ob.PlaceOrder(LIMIT, bidOrder_qty1)
 
 	fmt.Println(trades)
@@ -91,7 +91,7 @@ func TestOrderBook_TakeLimitOrder_BID(t *testing.T) {
 	assert(t, ob.TotalAskQuoteAmount(), 41900.0)
 
 	// buy 2150 can fill ask 2100 * 3 and 2150 * 4 & bid left 3 qty
-	bidOrder_qty10 := model.NewOrder("test_bid_02", "test01", model.BID, 2150, 10, model.TAKER)
+	bidOrder_qty10 := model.NewOrder("test_bid_02", "test01", model.BID, 2150, 10, 0, model.TAKER)
 	trades_2, _ := ob.PlaceOrder(LIMIT, bidOrder_qty10)
 	fmt.Println(trades_2)
 	assert(t, 2, len(trades_2))
@@ -101,7 +101,7 @@ func TestOrderBook_TakeLimitOrder_BID(t *testing.T) {
 	assert(t, ob.TotalAskQuoteAmount(), 41900.0-(2100*3+2150*4))
 
 	// try add a same orderId
-	bidOrder_qty10_same_id := model.NewOrder("test_bid_02", "test01", model.BID, 2150, 10, model.TAKER)
+	bidOrder_qty10_same_id := model.NewOrder("test_bid_02", "test01", model.BID, 2150, 10, 0, model.TAKER)
 	trades_3, err := ob.PlaceOrder(LIMIT, bidOrder_qty10_same_id)
 	assert(t, true, err != nil)
 	fmt.Println(trades_3)
@@ -123,12 +123,12 @@ func TestOrderBook_TakeMarketOrder(t *testing.T) {
 	fmt.Println(ob.TotalAskVolume())
 	fmt.Println(ob.TotalBidVolume())
 
-	askOrder_qty100 := model.NewOrder("test_ask_01", "test01", model.ASK, 0, 100, model.TAKER)
+	askOrder_qty100 := model.NewOrder("test_ask_01", "test01", model.ASK, 0, 100, 0, model.TAKER)
 	_, err := ob.PlaceOrder(MARKET, askOrder_qty100)
 	assert(t, true, err != nil)
 	fmt.Println(err)
 
-	askOrder_qty10 := model.NewOrder("test_ask_01", "test01", model.ASK, 0, 11, model.TAKER)
+	askOrder_qty10 := model.NewOrder("test_ask_01", "test01", model.ASK, 0, 11, 0, model.TAKER)
 	trades, _ := ob.PlaceOrder(MARKET, askOrder_qty10)
 	fmt.Println(trades)
 	assert(t, 3, len(trades))
@@ -161,7 +161,7 @@ func TestOrderBook_ConcurrencySafety(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			id := fmt.Sprintf("O%04d", i)
-			order := model.NewOrder(id, "user", model.BID, 100+float64(i%10), 1, model.MAKER)
+			order := model.NewOrder(id, "user", model.BID, 100+float64(i%10), 1, 0, model.MAKER)
 			// Place order
 			_, err_1 := ob.PlaceOrder(LIMIT, order)
 			assertNoError(t, err_1)
@@ -187,22 +187,22 @@ func TestOrderBook_BoundaryScenarios(t *testing.T) {
 	ob := NewOrderBook(mockMarket())
 
 	// Empty book matching returns no trades and no panics
-	trades, err := ob.PlaceOrder(LIMIT, model.NewOrder("T1", "u", model.BID, 100, 1, model.TAKER))
+	trades, err := ob.PlaceOrder(LIMIT, model.NewOrder("T1", "u", model.BID, 100, 1, 0, model.TAKER))
 	assertNoError(t, err)
 	assert(t, 0, len(trades))
 
 	// Price mismatch: bid price lower than best ask
 	// Setup an ask at price 110
-	_, err_1 := ob.PlaceOrder(LIMIT, model.NewOrder("A1", "u", model.ASK, 110, 5, model.MAKER))
+	_, err_1 := ob.PlaceOrder(LIMIT, model.NewOrder("A1", "u", model.ASK, 110, 5, 0, model.MAKER))
 	assertNoError(t, err_1)
 	// Place a taker bid at price 100
-	trades, err_2 := ob.PlaceOrder(LIMIT, model.NewOrder("T2", "u", model.BID, 100, 1, model.TAKER))
+	trades, err_2 := ob.PlaceOrder(LIMIT, model.NewOrder("T2", "u", model.BID, 100, 1, 0, model.TAKER))
 	assertNoError(t, err_2)
 	assert(t, 0, len(trades))
 
 	// Partial fill should re-enter remainder
 	// Place taker bid at price 110 for quantity 3 (ask has 5)
-	trades, err = ob.PlaceOrder(LIMIT, model.NewOrder("T3", "u", model.BID, 110, 3, model.TAKER))
+	trades, err = ob.PlaceOrder(LIMIT, model.NewOrder("T3", "u", model.BID, 110, 3, 0, model.TAKER))
 	assertNoError(t, err)
 	assert(t, 1, len(trades))
 	assert(t, 3.0, trades[0].Size)
@@ -221,19 +221,19 @@ func TestOrderBook_MarketOrder(t *testing.T) {
 	ob := NewOrderBook(mockMarket())
 
 	// Setup depth: two asks totaling 5
-	_, err_1 := ob.PlaceOrder(LIMIT, model.NewOrder("A1", "u", model.ASK, 100, 2, model.MAKER))
+	_, err_1 := ob.PlaceOrder(LIMIT, model.NewOrder("A1", "u", model.ASK, 100, 2, 0, model.MAKER))
 	assertNoError(t, err_1)
-	_, err_2 := ob.PlaceOrder(LIMIT, model.NewOrder("A2", "u", model.ASK, 101, 3, model.MAKER))
+	_, err_2 := ob.PlaceOrder(LIMIT, model.NewOrder("A2", "u", model.ASK, 101, 3, 0, model.MAKER))
 	assertNoError(t, err_2)
 
 	// Insufficient market buy order
-	_, err := ob.PlaceOrder(MARKET, model.NewOrder("T1", "u", model.BID, 0, 10, model.TAKER))
+	_, err := ob.PlaceOrder(MARKET, model.NewOrder("T1", "u", model.BID, 0, 10, 0, model.TAKER))
 	if err == nil {
 		t.Fatalf("expected error for insufficient volume, got nil")
 	}
 
 	// Sufficient market buy order
-	trades, err := ob.PlaceOrder(MARKET, model.NewOrder("T2", "u", model.BID, 0, 5, model.TAKER))
+	trades, err := ob.PlaceOrder(MARKET, model.NewOrder("T2", "u", model.BID, 0, 5, 0, model.TAKER))
 	assertNoError(t, err)
 	// Should generate exactly 2 trades
 	assert(t, 2, len(trades))

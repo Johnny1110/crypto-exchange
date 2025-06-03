@@ -17,7 +17,7 @@ func BenchmarkMakeLimitOrder(b *testing.B) {
 			"bench-user",
 			model.BID,
 			float64(i%1000)+1000,
-			1.0,
+			1.0, 0,
 			model.MAKER,
 		)
 		if _, err := ob.PlaceOrder(LIMIT, order); err != nil {
@@ -37,7 +37,7 @@ func BenchmarkTakeLimitOrder_FullMatch(b *testing.B) {
 			"bench-user",
 			model.ASK,
 			1000+float64(i),
-			1.0,
+			1.0, 0,
 			model.MAKER,
 		)
 		ob.PlaceOrder(LIMIT, order)
@@ -50,7 +50,7 @@ func BenchmarkTakeLimitOrder_FullMatch(b *testing.B) {
 			"bench-user",
 			model.BID,
 			1000+float64(i%depth),
-			1.0,
+			1.0, 0,
 			model.TAKER,
 		)
 		_, err := ob.PlaceOrder(LIMIT, taker)
@@ -73,7 +73,7 @@ func BenchmarkTakeMarketOrder(b *testing.B) {
 			"bench-user",
 			model.ASK,
 			1000+float64(i),
-			size,
+			size, 0,
 			model.MAKER,
 		)
 		ob.PlaceOrder(LIMIT, order)
@@ -86,7 +86,7 @@ func BenchmarkTakeMarketOrder(b *testing.B) {
 			"bench-user",
 			model.BID,
 			0,
-			0.001,
+			0.001, 0,
 			model.TAKER,
 		)
 		_, err := ob.PlaceOrder(MARKET, taker)
@@ -107,7 +107,7 @@ func BenchmarkCancelOrder(b *testing.B) {
 			"bench-user",
 			model.BID,
 			1000,
-			1.0,
+			1.0, 0,
 			model.MAKER,
 		)
 		ob.PlaceOrder(LIMIT, orders[i])

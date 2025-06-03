@@ -192,3 +192,25 @@ func (b balanceRepository) BatchCreate(ctx context.Context, db repository.DBExec
 
 	return nil
 }
+
+func (b balanceRepository) UpdateAsset(ctx context.Context, db repository.DBExecutor, userId string, asset string, availableChanging float64, lockedChanging float64) error {
+	query := `UPDATE balances 
+			  SET available = available + ?, locked = locked + ? 
+			  WHERE user_id = ? AND asset = ?`
+
+	result, err := db.ExecContext(ctx, query, availableChanging, lockedChanging, userId, asset)
+	if err != nil {
+		return fmt.Errorf("failed to UpdateAsset balance: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get UpdateAsset affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("userId %s and asset %s not found", userId, asset)
+	}
+
+	return nil
+}

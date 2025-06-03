@@ -3,11 +3,15 @@ package serviceImpl
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"github.com/johnny1110/crypto-exchange/dto"
+	"github.com/johnny1110/crypto-exchange/engine-v2/book"
 	"github.com/johnny1110/crypto-exchange/engine-v2/core"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
 	"github.com/johnny1110/crypto-exchange/repository"
 	"github.com/johnny1110/crypto-exchange/service"
+	"github.com/johnny1110/crypto-exchange/service/serviceHelper"
+	"github.com/labstack/gommon/log"
 )
 
 type orderService struct {
@@ -34,8 +38,92 @@ func NewIOrderService(
 }
 
 func (s *orderService) PlaceOrder(ctx context.Context, market, userID string, req *dto.OrderReq) (*dto.PlaceOrderResult, error) {
-	//TODO implement me
-	panic("implement me")
+	err := validatePlacingOrderReq(userID, market, req)
+	if err != nil {
+		log.Errorf("[PlaceOrder] validatePlacingOrderReq err: %v", err)
+		return nil, err
+	}
+
+	baseAsset, quoteAsset, err := serviceHelper.ParseMarket(s.engine, market)
+	if err != nil {
+		log.Errorf("[PlaceOrder] ParseMarket err: %v", err)
+		return nil, err
+	}
+	freezeAsset, freezeAmt := serviceHelper.DetermineFreezeValue(req, baseAsset, quoteAsset)
+	orderDto := serviceHelper.NewOrderDtoByOrderReq(market, userID, req)
+
+	var trades []book.Trade
+
+	// Txn-1: process placing order flow.
+	err = WithTx(ctx, s.db, func(tx *sql.Tx) error {
+		// 1. Freeze funds based on market and side.
+		err = s.balanceRepo.LockedByUserIdAndAsset(ctx, tx, userID, freezeAsset, freezeAmt)
+		if err != nil {
+			log.Warnf("[PlaceOrder] BalanceRepo.LockedByUserIdAndAsset err: %v", err)
+			return err
+		}
+
+		// 2. Save new orderDto into DB.
+		err = s.orderRepo.Insert(ctx, tx, orderDto)
+		if err != nil {
+			log.Errorf("[PlaceOrder] OrderRepo.Insert err: %v", err)
+			return err
+		}
+
+		// 3. Placing Order into engine
+		engineOrder := serviceHelper.NewEngineOrderByOrderDto(orderDto)
+		trades, err = s.engine.PlaceOrder(market, req.OrderType, engineOrder)
+		if err != nil {
+			log.Errorf("[PlaceOrder] engine.PlaceOrder err: %v", err)
+			return err
+		}
+		// dump engineOrder size&status to orderDto
+		orderDto.RemainingSize = engineOrder.RemainingSize
+		orderDto.Status = engineOrder.GetStatus()
+
+		// 4. Save all matching trade details
+		err = s.tradeRepo.BatchInsert(ctx, tx, trades)
+		if err != nil {
+			log.Errorf("[PlaceOrder] tradeRepo.BatchInsert err: %v", err)
+			return err
+		}
+
+		return err
+	})
+
+	// Collect trades data to updateOrderDataList and settlementList
+	orderUpdates, userSettlements, err := serviceHelper.TidyUpTradesData(baseAsset, quoteAsset, freezeAsset, freezeAmt, orderDto, trades)
+	if err != nil {
+		log.Errorf("[PlaceOrder] TidyUpTradesData err: %v", err)
+		return nil, err
+	}
+
+	// Txn-2: handle matching trades flow and update orders.
+	err = WithTx(ctx, s.db, func(tx *sql.Tx) error {
+		for _, ou := range orderUpdates {
+			err = s.orderRepo.DecreaseRemainingSize(ctx, tx, ou.OrderID, ou.RemainingSizeDecreasing)
+			if err != nil {
+				log.Errorf("[PlaceOrder] DecreaseRemainingSize err: %v", err)
+				return err
+			}
+		}
+
+		for userId, us := range userSettlements {
+			err = s.balanceRepo.UpdateAsset(ctx, tx, userId, baseAsset, us.BaseAssetAvailable, us.BaseAssetLocked)
+			if err != nil {
+				log.Errorf("[PlaceOrder] Update Base Asset err: %v", err)
+				return err
+			}
+			err = s.balanceRepo.UpdateAsset(ctx, tx, userId, quoteAsset, us.QuoteAssetAvailable, us.QuoteAssetLocked)
+			if err != nil {
+				log.Errorf("[PlaceOrder] Update Quote Asset err: %v", err)
+				return err
+			}
+		}
+		return nil
+	})
+
+	return nil, err
 }
 
 func (s *orderService) CancelOrder(ctx context.Context, market, userID, orderID string) (*dto.Order, error) {
@@ -59,4 +147,30 @@ func orderStatusesByOpenFlag(isOpen bool) []model.OrderStatus {
 		model.ORDER_STATUS_CANCELED,
 		model.ORDER_STATUS_FILLED,
 	}
+}
+
+func validatePlacingOrderReq(userId, market string, req *dto.OrderReq) error {
+	if userId == "" {
+		return errors.New("user id is required")
+	}
+	if market == "" {
+		return errors.New("market is required")
+	}
+
+	if req.Side == model.ASK {
+		if req.Size <= 0 {
+			return errors.New("ask order size must be greater than zero")
+		}
+	}
+
+	if req.Side == model.BID {
+		if req.OrderType == book.MARKET && req.QuoteAmount <= 0 {
+			return errors.New("bid order quote amount must be greater than zero")
+		}
+	}
+
+	if req.OrderType == book.LIMIT && (req.Price <= 0 || req.Size <= 0) {
+		return errors.New("limit order price and size must be greater than zero")
+	}
+	return nil
 }

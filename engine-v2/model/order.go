@@ -64,7 +64,7 @@ func (o *Order) CounterSide() Side {
 // NewOrder
 // side: BID ASK
 // mode: MAKER TAKER
-func NewOrder(orderId, userId string, side Side, price float64, size float64, mode Mode) *Order {
+func NewOrder(orderId, userId string, side Side, price float64, size float64, quoteAmt float64, mode Mode) *Order {
 	return &Order{
 		ID:            orderId,
 		UserID:        userId,
@@ -72,6 +72,7 @@ func NewOrder(orderId, userId string, side Side, price float64, size float64, mo
 		Price:         price,
 		OriginalSize:  size,
 		RemainingSize: size,
+		QuoteAmount:   quoteAmt,
 		Mode:          mode,
 		Timestamp:     time.Now(),
 	}
@@ -82,8 +83,8 @@ type OrderNode struct {
 	Prev, Next *OrderNode
 }
 
-func NewOrderNode(orderId, userId string, side Side, price float64, qty float64, orderType Mode) *OrderNode {
-	order := NewOrder(orderId, userId, side, price, qty, orderType)
+func NewOrderNode(orderId, userId string, side Side, price float64, size float64, quoteAmt float64, orderType Mode) *OrderNode {
+	order := NewOrder(orderId, userId, side, price, size, quoteAmt, orderType)
 	return &OrderNode{
 		Order: order,
 	}

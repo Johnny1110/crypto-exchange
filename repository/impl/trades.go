@@ -15,7 +15,7 @@ func NewTradeRepository() repository.ITradeRepository {
 	return &tradeRepository{}
 }
 
-func (t tradeRepository) BatchInsert(ctx context.Context, db repository.DBExecutor, trades []*book.Trade) error {
+func (t tradeRepository) BatchInsert(ctx context.Context, db repository.DBExecutor, trades []book.Trade) error {
 	if len(trades) == 0 {
 		return nil
 	}

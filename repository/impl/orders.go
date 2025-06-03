@@ -213,3 +213,40 @@ func (o orderRepository) GetOrdersByUserIdAndStatuses(ctx context.Context, db *s
 
 	return orders, nil
 }
+
+func (o orderRepository) DecreaseRemainingSize(ctx context.Context, db *sql.Tx, orderId string, decreasingSize float64) error {
+	query := `UPDATE orders SET 
+		remaining_size = remaining_size-?, 
+		status = CASE           
+		    					WHEN original_size = 0 THEN ?
+			                  	WHEN remaining_size - ? = 0 THEN ?
+								WHEN remaining_size - ? < original_size THEN ?
+								ELSE status END
+                , updated_at = ?
+		WHERE id = ?`
+
+	result, err := db.ExecContext(ctx, query,
+		decreasingSize,
+		model.ORDER_STATUS_FILLED,
+		decreasingSize,
+		model.ORDER_STATUS_FILLED,
+		decreasingSize,
+		model.ORDER_STATUS_PARTIAL,
+		time.Now(),
+		orderId,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to DecreaseRemainingSize order: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("order with id %s not found", orderId)
+	}
+	return nil
+}
