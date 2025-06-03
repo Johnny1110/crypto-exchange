@@ -1,4 +1,4 @@
-# API Document
+# Document
 
 <br>
 
@@ -21,6 +21,14 @@ BTC-USDT
 ```
 
 <br>
+
+DB Schema
+
+* [general](db_schema/schema.sql)
+
+<br>
+
+## API
 
 * [Users](users)
 * [Balances](balances)
