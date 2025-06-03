@@ -6,6 +6,7 @@ import (
 	"github.com/johnny1110/crypto-exchange/engine-v2/book"
 	"github.com/johnny1110/crypto-exchange/engine-v2/core"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
+	"github.com/labstack/gommon/log"
 	"time"
 )
 
@@ -137,4 +138,23 @@ func TidyUpTradesData(baseAsset, quoteAsset string, freezeAsset string, freezeAm
 	}
 
 	return orderUpdates, userSettlements, nil
+}
+
+func CalculateRefund(engine *core.MatchingEngine, market string, engineOrder *model.Order) (unlockAsset string, unlockAmount float64, err error) {
+	baseAsset, quoteAsset, err := ParseMarket(engine, market)
+	if err != nil {
+		log.Errorf("[CalculateRefund] ParseMarket err: %v", err)
+		return "", 0, err
+	}
+
+	switch engineOrder.Side {
+	case model.BID:
+		unlockAmount = engineOrder.Price * engineOrder.RemainingSize
+		unlockAsset = quoteAsset
+		break
+	case model.ASK:
+		unlockAmount = engineOrder.RemainingSize
+		unlockAsset = baseAsset
+	}
+	return unlockAsset, unlockAmount, nil
 }

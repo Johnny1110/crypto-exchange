@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/johnny1110/crypto-exchange/dto"
 	"github.com/johnny1110/crypto-exchange/engine-v2/book"
 	"github.com/johnny1110/crypto-exchange/engine-v2/core"
@@ -135,8 +136,54 @@ func (s *orderService) PlaceOrder(ctx context.Context, market, userID string, re
 }
 
 func (s *orderService) CancelOrder(ctx context.Context, market, userID, orderID string) (*dto.Order, error) {
-	//TODO implement me
-	panic("implement me")
+	if market == "" || userID == "" || orderID == "" {
+		return nil, fmt.Errorf("invalid input")
+	}
+
+	orderDto, err := s.orderRepo.GetOrderByOrderId(ctx, s.db, orderID)
+	if err != nil {
+		log.Warnf("[CancelOrder] orderRepo.GetOrderByOrderId err: %v", err)
+		return nil, err
+	}
+
+	if orderDto.UserID != userID {
+		log.Warnf("[CancelOrder] failed, order not belongs to user: %v", err)
+		return nil, fmt.Errorf("order not belongs to user")
+	}
+
+	engineOrder, err := s.engine.CancelOrder(market, orderID)
+	if err != nil {
+		log.Errorf("[CancelOrder] engine.CancelOrder err: %v", err)
+		return nil, err
+	}
+
+	err = WithTx(ctx, s.db, func(tx *sql.Tx) error {
+		// update order
+		orderDto.RemainingSize = engineOrder.RemainingSize
+		orderDto.Status = model.ORDER_STATUS_CANCELED
+		err = s.orderRepo.Update(ctx, tx, orderDto)
+		if err != nil {
+			log.Errorf("[CancelOrder] orderRepo.CancelOrder err: %v", err)
+			return err
+		}
+		// refund user balances
+		unlockAsset, unlockAmount, err := serviceHelper.CalculateRefund(s.engine, market, engineOrder)
+		if err != nil {
+			log.Errorf("[CancelOrder] calculate refund error: %v", err)
+		}
+		err = s.balanceRepo.UnlockedByUserIdAndAsset(ctx, tx, userID, unlockAsset, unlockAmount)
+		if err != nil {
+			log.Errorf("[CancelOrder] balanceRepo.UnlockedByUserIdAndAsset err: %v", err)
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		log.Errorf("[CancelOrder] WithTx err: %v", err)
+		return nil, err
+	}
+
+	return orderDto, nil
 }
 
 func (s *orderService) QueryOrder(ctx context.Context, userID string, isOpenOrder bool) ([]*dto.Order, error) {

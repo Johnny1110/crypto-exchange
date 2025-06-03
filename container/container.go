@@ -65,7 +65,7 @@ func (c *Container) initServices() {
 	c.BalanceService = serviceImpl.NewIBalanceService(c.DB, c.UserRepo, c.BalanceRepo)
 	c.OrderService = serviceImpl.NewIOrderService(c.DB, c.MatchingEngine, c.OrderRepo, c.TradeRepo, c.BalanceRepo)
 	c.OrderBookService = serviceImpl.NewIOrderBookService(c.MatchingEngine)
-	c.AdminService = serviceImpl.NewIAdminService(c.DB, c.UserRepo, c.BalanceRepo)
+	c.AdminService = serviceImpl.NewIAdminService(c.DB, c.UserRepo, c.BalanceRepo, c.OrderService)
 }
 
 // Cleanup 清理資源

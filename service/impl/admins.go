@@ -10,18 +10,21 @@ import (
 )
 
 type adminService struct {
-	db          *sql.DB
-	userRepo    repository.IUserRepository
-	balanceRepo repository.IBalanceRepository
+	db           *sql.DB
+	userRepo     repository.IUserRepository
+	balanceRepo  repository.IBalanceRepository
+	orderService service.IOrderService
 }
 
 func NewIAdminService(db *sql.DB,
 	userRepo repository.IUserRepository,
-	balanceRepo repository.IBalanceRepository) service.IAdminService {
+	balanceRepo repository.IBalanceRepository,
+	orderService service.IOrderService) service.IAdminService {
 	return &adminService{
-		db:          db,
-		userRepo:    userRepo,
-		balanceRepo: balanceRepo,
+		db:           db,
+		userRepo:     userRepo,
+		balanceRepo:  balanceRepo,
+		orderService: orderService,
 	}
 }
 
@@ -48,4 +51,9 @@ func (as adminService) Settlement(ctx context.Context, req dto.SettlementReq) er
 	})
 
 	return err
+}
+
+func (as adminService) TestAutoMakeMarket(ctx context.Context) error {
+	// TODO: make some testing maker
+	return nil
 }

@@ -42,8 +42,9 @@ type IOrderRepository interface {
 	Update(ctx context.Context, db DBExecutor, order *dto.Order) error
 	GetOrderByOrderId(ctx context.Context, db DBExecutor, orderId string) (*dto.Order, error)
 	GetOrdersByUserIdAndStatus(ctx context.Context, db DBExecutor, userId string, status model.OrderStatus) ([]*dto.Order, error)
-	GetOrdersByUserIdAndStatuses(ctx context.Context, db *sql.DB, id string, statuses []model.OrderStatus) ([]*dto.Order, error)
-	DecreaseRemainingSize(ctx context.Context, tx *sql.Tx, orderId string, decreasingSize float64) error
+	GetOrdersByUserIdAndStatuses(ctx context.Context, db DBExecutor, id string, statuses []model.OrderStatus) ([]*dto.Order, error)
+	DecreaseRemainingSize(ctx context.Context, db DBExecutor, orderId string, decreasingSize float64) error
+	CancelOrder(ctx context.Context, db DBExecutor, orderId string, remainingSize float64) error
 }
 
 type ITradeRepository interface {

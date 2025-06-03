@@ -154,7 +154,7 @@ func (o orderRepository) GetOrdersByUserIdAndStatus(ctx context.Context, db repo
 	return orders, nil
 }
 
-func (o orderRepository) GetOrdersByUserIdAndStatuses(ctx context.Context, db *sql.DB, id string, statuses []model.OrderStatus) ([]*dto.Order, error) {
+func (o orderRepository) GetOrdersByUserIdAndStatuses(ctx context.Context, db repository.DBExecutor, id string, statuses []model.OrderStatus) ([]*dto.Order, error) {
 	if len(statuses) == 0 {
 		return []*dto.Order{}, nil
 	}
@@ -214,7 +214,7 @@ func (o orderRepository) GetOrdersByUserIdAndStatuses(ctx context.Context, db *s
 	return orders, nil
 }
 
-func (o orderRepository) DecreaseRemainingSize(ctx context.Context, db *sql.Tx, orderId string, decreasingSize float64) error {
+func (o orderRepository) DecreaseRemainingSize(ctx context.Context, db repository.DBExecutor, orderId string, decreasingSize float64) error {
 	query := `UPDATE orders SET 
 		remaining_size = remaining_size-?, 
 		status = CASE           
@@ -248,5 +248,33 @@ func (o orderRepository) DecreaseRemainingSize(ctx context.Context, db *sql.Tx, 
 	if rowsAffected == 0 {
 		return fmt.Errorf("order with id %s not found", orderId)
 	}
+	return nil
+}
+
+func (o orderRepository) CancelOrder(ctx context.Context, db repository.DBExecutor, orderId string, remainingSize float64) error {
+	query := `UPDATE orders SET 
+		remaining_size = ?, status = ?, updated_at = ?
+		WHERE id = ?`
+
+	result, err := db.ExecContext(ctx, query,
+		remainingSize,
+		model.ORDER_STATUS_CANCELED,
+		time.Now(),
+		orderId,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to cancel order: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("order with id %s not found", orderId)
+	}
+
 	return nil
 }
