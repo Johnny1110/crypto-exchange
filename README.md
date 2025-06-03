@@ -28,7 +28,23 @@ $> node node_modules/.bin/ganache
 
 ## Document
 
-* [link](doc)
+* How to startup?
+
+    ```
+    > go install
+    > go run
+    ```
+
+<br>
+
+* Database
+
+    * [Schema](doc/db_schema/db_schema_sql)
+    * [Testing Data](doc/db_schema/testing_data.sql)
+
+<br>
+
+* [API Doc](doc)
 
 <br>
 <br>

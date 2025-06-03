@@ -7,25 +7,21 @@
 * healthcheck:
 
 ```
-URI: /healthcheck
+URI: /health
 Method: GET
 ```
 
 <br>
 
-## Current Support Market
+## Currently Supported Markets:
 
 ```
-ETH-USDT
 BTC-USDT
+ETH-USDT
+DOT-USDT
 ```
 
 <br>
-
-DB Schema
-
-* [general](db_schema/schema.sql)
-
 <br>
 
 ## API
