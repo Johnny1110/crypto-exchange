@@ -8,6 +8,12 @@ URI: `/admin/api/v1/manual-adjustment`
 
 Method: POST
 
+Headers:
+
+```
+Admin-Token: string (using 'frizo' for testing)
+```
+
 Request-Body:
 ```json
 {
@@ -26,3 +32,9 @@ Request-Body:
 URI: `/admin/api/v1/auto-market-maker`
 
 Method: POST
+
+Headers:
+
+```
+Admin-Token: string (using 'frizo' for testing)
+```
