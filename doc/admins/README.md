@@ -18,7 +18,6 @@ Request-Body:
 ```json
 {
     "username": "johnny",
-    "secret": "frizo", // static string
     "amount": 3000,
     "asset": "USDT"
 }
