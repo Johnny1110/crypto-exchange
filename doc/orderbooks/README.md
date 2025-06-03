@@ -6,7 +6,7 @@
 
 Display top 20 bids/asks price volume pair
 
-URI: `/orderbooks/{market}/snapshot`
+URI: `/api/v1/orderbooks/{market}/snapshot`
 Method: GET
 
 Path-Param:
@@ -21,6 +21,8 @@ Response-Body:
 
 ```json
 {
+    "code": "0000000",
+    "message": "success",
     "data": {
         "BidSide": [
             {

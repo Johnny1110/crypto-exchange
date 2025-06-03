@@ -8,7 +8,7 @@
 
 <br>
 
-URI: `/orders/{market}`
+URI: `/api/v1/orders/{market}`
 Method: POST
 Headers:
 ```
@@ -45,7 +45,7 @@ Params:
 
 ### I want to put a __buy ETH__ order into OrderBook as a market maker, price limit is $2500 USDT, qty is 10.
 
-URI: `/orders/ETH-USDT`
+URI: `/api/v1/orders/ETH-USDT`
 Method: POST
 Headers:
 ```
@@ -66,7 +66,7 @@ Request-Body:
 
 ### I want to sell ETH by limit order as a user, price limit is $2600 USDT, qty is 0.131.
 
-URI: `/orders/ETH-USDT`
+URI: `/api/v1/orders/ETH-USDT`
 Method: POST
 Headers:
 ```
@@ -87,7 +87,7 @@ Request-Body:
 
 ### I want to buy ETH by market order as a user, I only want to cost total $300 USDT.
 
-URI: `/orders/ETH-USDT`
+URI: `/api/v1/orders/ETH-USDT`
 Method: POST
 Headers:
 ```

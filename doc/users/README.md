@@ -4,7 +4,7 @@
 
 ## Register
 
-URI: `/users/register`
+URI: `/api/v1/users/register`
 Method: POST
 Request-Body:
 
@@ -15,11 +15,23 @@ Request-Body:
 }
 ```
 
+Response-Body:
+
+```json
+{
+    "code": "0000000",
+    "data": {
+        "userId": "92b229e2-447c-4775-8ad8-320b0b492e3d"
+    },
+    "message": "success"
+}
+```
+
 <br>
 
 ## Login
 
-URI: `/users/login`
+URI: `/api/v1/users/login`
 Method: POST
 Request-Body:
 
@@ -34,7 +46,11 @@ Response-Body:
 
 ```
 {
-    "token": "94a2cc50-5478-48be-8cd5-d4fc486fa99c"
+    "code": "0000000",
+    "data": {
+        "token": "5e5c2694-9b3b-4097-8381-f36a55745117"
+    },
+    "message": "success"
 }
 ```
 
@@ -42,11 +58,21 @@ Response-Body:
 
 ## Logout
 
-URI: `localhost:8080/users/logout`
-Method: DELETE
+URI: `/api/v1/users/logout`
+Method: POST
 
 Header:
 
 ```
 Authorization: string (login token)
+```
+
+Response-Body:
+
+```json
+{
+    "code": "0000000",
+    "data": null,
+    "message": "success"
+}
 ```

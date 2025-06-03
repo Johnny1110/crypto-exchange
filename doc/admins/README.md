@@ -4,7 +4,7 @@
 
 ## Settlement Balance
 
-URI: `/admin/manual-adjustment`
+URI: `/admin/api/v1/manual-adjustment`
 Method: POST
 Request-Body:
 ```json
@@ -21,5 +21,5 @@ Request-Body:
 
 ## Trigger Auto Market Maker (For Testing)
 
-URI: `/admin/auto-market-maker`
+URI: `/admin/api/v1/auto-market-maker`
 Method: POST

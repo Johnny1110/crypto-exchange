@@ -4,7 +4,7 @@
 
 ## Get Balance Info
 
-URI: `/balances`
+URI: `/api/v1/balances`
 Method: GET
 Header:
 ```
@@ -14,38 +14,48 @@ Authorization: string (login token)
 Response-Body:
 
 ```json
-[
-    {
-        "asset": "ASTR",
-        "available": 0,
-        "locked": 0
-    },
-    {
-        "asset": "BTC",
-        "available": 0,
-        "locked": 0
-    },
-    {
-        "asset": "DOT",
-        "available": 0,
-        "locked": 0
-    },
-    {
-        "asset": "ETH",
-        "available": 5,
-        "locked": 0
-    },
-    {
-        "asset": "HDX",
-        "available": 0,
-        "locked": 0
-    },
-    {
-        "asset": "USDT",
-        "available": 3000,
-        "locked": 0
-    }
-]
+{
+    "code": "0000000",
+    "data": [
+        {
+            "asset": "ASTR",
+            "available": 0,
+            "locked": 0,
+            "total": 0
+        },
+        {
+            "asset": "BTC",
+            "available": 0,
+            "locked": 0,
+            "total": 0
+        },
+        {
+            "asset": "DOT",
+            "available": 0,
+            "locked": 0,
+            "total": 0
+        },
+        {
+            "asset": "ETH",
+            "available": 5,
+            "locked": 0,
+            "total": 5
+        },
+        {
+            "asset": "HDX",
+            "available": 0,
+            "locked": 0,
+            "total": 0
+        },
+        {
+            "asset": "USDT",
+            "available": 9000,
+            "locked": 0,
+            "total": 9000
+        }
+    ],
+    "message": "success"
+}
 ```
 
 * `asset`: Currency
