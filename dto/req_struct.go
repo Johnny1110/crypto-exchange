@@ -19,7 +19,6 @@ type SettlementReq struct {
 	Username string  `json:"username" binding:"required"`
 	Asset    string  `json:"asset" binding:"required"`
 	Amount   float64 `json:"amount" binding:"required,gt=0"`
-	Secret   string  `json:"secret" binding:"required"`
 }
 
 type OrderReq struct {

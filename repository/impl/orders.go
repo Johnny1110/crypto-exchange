@@ -21,8 +21,8 @@ func NewOrderRepository() repository.IOrderRepository {
 func (o orderRepository) Insert(ctx context.Context, db repository.DBExecutor, order *dto.Order) error {
 	query := `INSERT INTO orders (
 		id, user_id, market, side, price, original_size, remaining_size, 
-		quote_amount, type, mode, status, created_at, updated_at
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		quote_amount, avg_dealt_price, type, mode, status, created_at, updated_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	_, err := db.ExecContext(ctx, query,
 		order.ID,
@@ -33,6 +33,7 @@ func (o orderRepository) Insert(ctx context.Context, db repository.DBExecutor, o
 		order.OriginalSize,
 		order.RemainingSize,
 		order.QuoteAmount,
+		order.AvgDealtPrice,
 		order.Type,
 		order.Mode,
 		order.Status,
@@ -77,7 +78,7 @@ func (o orderRepository) Update(ctx context.Context, db repository.DBExecutor, o
 
 func (o orderRepository) GetOrderByOrderId(ctx context.Context, db repository.DBExecutor, orderId string) (*dto.Order, error) {
 	query := `SELECT id, user_id, market, side, price, original_size, remaining_size, 
-		quote_amount, type, mode, status, created_at, updated_at 
+		quote_amount, avg_dealt_price, type, mode, status, created_at, updated_at 
 		FROM orders WHERE id = ?`
 
 	var order dto.Order
@@ -91,6 +92,7 @@ func (o orderRepository) GetOrderByOrderId(ctx context.Context, db repository.DB
 		&order.OriginalSize,
 		&order.RemainingSize,
 		&order.QuoteAmount,
+		&order.AvgDealtPrice,
 		&order.Type,
 		&order.Mode,
 		&order.Status,
@@ -110,7 +112,7 @@ func (o orderRepository) GetOrderByOrderId(ctx context.Context, db repository.DB
 
 func (o orderRepository) GetOrdersByUserIdAndStatus(ctx context.Context, db repository.DBExecutor, userId string, status model.OrderStatus) ([]*dto.Order, error) {
 	query := `SELECT id, user_id, market, side, price, original_size, remaining_size, 
-		quote_amount, type, mode, status, created_at, updated_at 
+		quote_amount, avg_dealt_price, type, mode, status, created_at, updated_at 
 		FROM orders WHERE user_id = ? AND status = ? 
 		ORDER BY created_at DESC`
 
@@ -133,6 +135,7 @@ func (o orderRepository) GetOrdersByUserIdAndStatus(ctx context.Context, db repo
 			&order.OriginalSize,
 			&order.RemainingSize,
 			&order.QuoteAmount,
+			&order.AvgDealtPrice,
 			&order.Type,
 			&order.Mode,
 			&order.Status,
@@ -170,7 +173,7 @@ func (o orderRepository) GetOrdersByUserIdAndStatuses(ctx context.Context, db re
 	}
 
 	query := fmt.Sprintf(`SELECT id, user_id, market, side, price, original_size, remaining_size, 
-		quote_amount, type, mode, status, created_at, updated_at 
+		quote_amount, avg_dealt_price, type, mode, status, created_at, updated_at 
 		FROM orders WHERE user_id = ? AND status IN (%s) 
 		ORDER BY created_at DESC`, strings.Join(placeholders, ","))
 
@@ -193,6 +196,7 @@ func (o orderRepository) GetOrdersByUserIdAndStatuses(ctx context.Context, db re
 			&order.OriginalSize,
 			&order.RemainingSize,
 			&order.QuoteAmount,
+			&order.AvgDealtPrice,
 			&order.Type,
 			&order.Mode,
 			&order.Status,

@@ -18,7 +18,8 @@ type IUserRepository interface {
 	GetUserById(ctx context.Context, db DBExecutor, userId string) (*dto.User, error)
 	GetUserByUsername(ctx context.Context, db DBExecutor, username string) (*dto.User, error)
 	Insert(ctx context.Context, db DBExecutor, user *dto.User) error
-	Update(ctx context.Context, db DBExecutor, user *dto.User) error
+	UpdatePwd(ctx context.Context, db DBExecutor, user *dto.User) error
+	UpdateVipLevel(ctx context.Context, db DBExecutor, user *dto.User) error
 }
 
 type IBalanceRepository interface {

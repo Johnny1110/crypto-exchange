@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/gin-gonic/gin"
@@ -11,10 +12,10 @@ import (
 	"github.com/johnny1110/crypto-exchange/middleware"
 	"log"
 	// for windows
-	//_ "modernc.org/sqlite"
+	_ "modernc.org/sqlite"
 
 	// for mac
-	_ "github.com/mattn/go-sqlite3"
+	//_ "github.com/mattn/go-sqlite3"
 	"net/http"
 )
 
@@ -37,6 +38,12 @@ func main() {
 
 	// It will iterate all the market, and do refresh the OrderBook snapshot
 	engine.StartSnapshotRefresher()
+
+	// TODO: remove this after testing
+	err = c.AdminService.TestAutoMakeMarket(context.Background())
+	if err != nil {
+		panic("failed to TestAutoMakeMarket")
+	}
 
 	log.Println("Exchange Server starting on :8080")
 	if err := router.Run(":8080"); err != nil {
@@ -114,9 +121,9 @@ func setupRoutes(
 
 func initDB() (*sql.DB, error) {
 	// for windows
-	//db, err := sql.Open("sqlite", "file:exg.db")
+	db, err := sql.Open("sqlite", "file:exg.db")
 	// for Mac
-	db, err := sql.Open("sqlite3", "./exg.db")
+	//db, err := sql.Open("sqlite3", "./exg.db")
 	if err != nil {
 		return nil, err
 	}

@@ -3,9 +3,8 @@ package dto
 import "time"
 
 type PlaceOrderResult struct {
-	Matches  []*Match `json:"matches"`
-	AvgPrice float64  `json:"avg_price"`
-	OrderID  string   `json:"order_id"`
+	Matches []*Match `json:"matches"`
+	Order   Order    `json:"order"`
 }
 
 type Match struct {

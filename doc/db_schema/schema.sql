@@ -1,11 +1,15 @@
+DROP TABLE IF EXISTS users;
 CREATE TABLE users
 (
     id            TEXT PRIMARY KEY,
     username      TEXT UNIQUE NOT NULL,
     password_hash TEXT        NOT NULL,
-    token         TEXT UNIQUE
+    vip_level     INTEGER,
+    maker_fee      REAL,
+    taker_fee      REAL
 );
 
+DROP TABLE IF EXISTS balances;
 CREATE TABLE balances
 (
     user_id   TEXT,
@@ -15,6 +19,7 @@ CREATE TABLE balances
     PRIMARY KEY (user_id, asset)
 );
 
+DROP TABLE IF EXISTS orders;
 CREATE TABLE orders
 (
     id             TEXT PRIMARY KEY,
@@ -24,7 +29,8 @@ CREATE TABLE orders
     price          REAL,
     original_size  REAL,
     remaining_size REAL,
-    quote_amount   REAL,
+    quote_amount   REAL, -- only for market order
+    avg_dealt_price REAL,
     type           INTEGER, -- 0=LIMIT,1=MARKET
     mode           INTEGER, -- 0=MAKER,1=TAKER
     status         TEXT,    -- NEW, FILLED, CANCELED
@@ -32,6 +38,8 @@ CREATE TABLE orders
     updated_at     DATETIME
 );
 
+
+DROP TABLE IF EXISTS trades;
 create table trades
 (
     id           INTEGER

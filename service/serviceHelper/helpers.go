@@ -49,6 +49,7 @@ func NewOrderDtoByOrderReq(market, userID string, req *dto.OrderReq) *dto.Order 
 		OriginalSize:  req.Size,
 		RemainingSize: req.Size,
 		QuoteAmount:   req.QuoteAmount,
+		AvgDealtPrice: 0.0,
 		Type:          req.OrderType,
 		Mode:          req.Mode,
 		Status:        model.ORDER_STATUS_NEW,
@@ -109,15 +110,21 @@ func TidyUpTradesData(baseAsset, quoteAsset string, freezeAsset string, freezeAm
 		tradePrice := trade.Price
 		tradeSize := trade.Size
 
+		// actual dealt Trade Quote Amt
+		actualDealtQuoteAmt := tradePrice * tradeSize
+
 		askUserSettlementData, _ := userSettlements[askUid]
 		bidUserSettlementData, _ := userSettlements[bidUid]
 
 		// 1-1. Process bid user locked quote balance.
 		if isEatenOrderLimitBuy {
+			unlockEatenOrderQuoteAmt := eatenOrder.Price * tradeSize
 			// if eaten order is a limit buy, unfreezeQuoteAmt -= eatenOrder.Price * trade.Size
-			bidUserSettlementData.QuoteAssetLocked -= eatenOrder.Price * tradeSize
+			bidUserSettlementData.QuoteAssetLocked -= unlockEatenOrderQuoteAmt
+			// refund over locked quote amount:
+			bidUserSettlementData.QuoteAssetAvailable += unlockEatenOrderQuoteAmt - actualDealtQuoteAmt
 		} else {
-			bidUserSettlementData.QuoteAssetLocked -= tradePrice * tradeSize
+			bidUserSettlementData.QuoteAssetLocked -= actualDealtQuoteAmt
 		}
 
 		// 1-2. Process bid user available base balance.
@@ -157,4 +164,23 @@ func CalculateRefund(engine *core.MatchingEngine, market string, engineOrder *mo
 		unlockAsset = baseAsset
 	}
 	return unlockAsset, unlockAmount, nil
+}
+
+func WrapPlaceOrderResult(orderDto *dto.Order, trades []book.Trade) *dto.PlaceOrderResult {
+	matches := make([]*dto.Match, 0, len(trades))
+
+	for _, trade := range trades {
+		match := &dto.Match{
+			Price:     trade.Price,
+			Size:      trade.Size,
+			Timestamp: trade.Timestamp,
+		}
+		matches = append(matches, match)
+	}
+
+	res := &dto.PlaceOrderResult{
+		Order:   *orderDto,
+		Matches: matches,
+	}
+	return res
 }

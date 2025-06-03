@@ -132,7 +132,7 @@ func (s *orderService) PlaceOrder(ctx context.Context, market, userID string, re
 		return nil
 	})
 
-	return nil, err
+	return serviceHelper.WrapPlaceOrderResult(orderDto, trades), err
 }
 
 func (s *orderService) CancelOrder(ctx context.Context, market, userID, orderID string) (*dto.Order, error) {

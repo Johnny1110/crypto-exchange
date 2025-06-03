@@ -15,6 +15,7 @@ type Order struct {
 	OriginalSize  float64           `json:"original_size"`
 	RemainingSize float64           `json:"remaining_size"`
 	QuoteAmount   float64           `json:"quote_amount"`
+	AvgDealtPrice float64           `json:"avg_dealt_price"`
 	Type          book.OrderType    `json:"type"`
 	Mode          model.Mode        `json:"mode"`
 	Status        model.OrderStatus `json:"status"`
