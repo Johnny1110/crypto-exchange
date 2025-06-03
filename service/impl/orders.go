@@ -52,6 +52,8 @@ func (s *orderService) PlaceOrder(ctx context.Context, market, userID string, re
 	freezeAsset, freezeAmt := serviceHelper.DetermineFreezeValue(req, baseAsset, quoteAsset)
 	orderDto := serviceHelper.NewOrderDtoByOrderReq(market, userID, req)
 
+	log.Infof("[PlaceOrder] orderDto: %v", orderDto)
+
 	var trades []book.Trade
 
 	// Txn-1: process placing order flow.
@@ -90,6 +92,12 @@ func (s *orderService) PlaceOrder(ctx context.Context, market, userID string, re
 
 		return err
 	})
+
+	// Txn-1 Got Error:
+	if err != nil {
+		log.Errorf("[PlaceOrder] PlaceOrder Txn-1 process has err: %v", err)
+		return nil, err
+	}
 
 	// Collect trades data to updateOrderDataList and settlementList
 	orderUpdates, userSettlements, err := serviceHelper.TidyUpTradesData(baseAsset, quoteAsset, freezeAsset, freezeAmt, orderDto, trades)

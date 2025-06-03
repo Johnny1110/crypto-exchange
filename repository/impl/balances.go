@@ -138,7 +138,7 @@ func (b balanceRepository) LockedByUserIdAndAsset(ctx context.Context, db reposi
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("insufficient available balance or balance not found for user %s and asset %s", userID, asset)
+		return fmt.Errorf("insufficient available balance, asset %s", asset)
 	}
 
 	return nil
