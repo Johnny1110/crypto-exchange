@@ -55,12 +55,17 @@ func TestAddThenRemoveOrderNode(t *testing.T) {
 
 	fmt.Println(bidSide.Len())
 	assert(t, 4, bidSide.Len())
+	assert(t, 35.0, bidSide.totalVolume)
+	assert(t, 38200.0, bidSide.totalQuoteAmount)
 
 	bidSide.RemoveOrderNode(1400, askOrderNode_1)
 	fmt.Println(bidSide.Len())
 	assert(t, 3, bidSide.Len())
+	assert(t, 30.0, bidSide.totalVolume)
+	assert(t, 31200.0, bidSide.totalQuoteAmount)
 
 	fmt.Println(bidSide.TotalVolume())
+	fmt.Println(bidSide.TotalQuoteAmount())
 }
 
 func TestBestPrice(t *testing.T) {

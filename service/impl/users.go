@@ -1,4 +1,4 @@
-package service
+package serviceImpl
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"github.com/johnny1110/crypto-exchange/security"
 	"github.com/johnny1110/crypto-exchange/service"
 	"github.com/johnny1110/crypto-exchange/settings"
+	"github.com/labstack/gommon/log"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -43,8 +44,12 @@ func (s userService) Register(ctx context.Context, req *dto.RegisterReq) (string
 	}
 
 	err = WithTx(ctx, s.db, func(tx *sql.Tx) error {
-		user, _ := s.userRepo.GetUserByUsername(ctx, tx, req.Username)
-		if user != nil {
+		user, err := s.userRepo.GetUserByUsername(ctx, tx, req.Username)
+
+		log.Infof("query username:[%s], got user: [%v], err:[%v]", req.Username, user, err)
+
+		if err == nil {
+			log.Warn("[Register] user with username already exists")
 			return errors.New("username already exists")
 		}
 
@@ -58,6 +63,11 @@ func (s userService) Register(ctx context.Context, req *dto.RegisterReq) (string
 
 		return err
 	})
+
+	if err != nil {
+		return "", err
+	}
+
 	return userID, err
 }
 

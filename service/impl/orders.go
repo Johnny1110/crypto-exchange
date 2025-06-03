@@ -1,4 +1,4 @@
-package service
+package serviceImpl
 
 import (
 	"context"
@@ -33,7 +33,12 @@ func NewIOrderService(
 	}
 }
 
-func (s *orderService) PlaceOrder(ctx context.Context, req *dto.OrderReq) (*dto.PlaceOrderResult, error) {
+func (s *orderService) PlaceOrder(ctx context.Context, market, userID string, req *dto.OrderReq) (*dto.PlaceOrderResult, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *orderService) CancelOrder(ctx context.Context, market, userID, orderID string) (*dto.Order, error) {
 	//TODO implement me
 	panic("implement me")
 }

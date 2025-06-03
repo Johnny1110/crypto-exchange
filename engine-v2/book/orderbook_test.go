@@ -43,6 +43,9 @@ func mockOrderBook(t *testing.T) *OrderBook {
 	assert(t, 25.0, totalBid)
 	assert(t, 20.0, totalAsk)
 
+	assert(t, ob.TotalBidQuoteAmount(), 55000.0)
+	assert(t, ob.TotalAskQuoteAmount(), 44000.0)
+
 	return ob
 }
 
@@ -84,6 +87,8 @@ func TestOrderBook_TakeLimitOrder_BID(t *testing.T) {
 
 	assert(t, 19.0, ob.TotalAskVolume())
 	assert(t, 25.0, ob.TotalBidVolume())
+	assert(t, ob.TotalBidQuoteAmount(), 55000.0)
+	assert(t, ob.TotalAskQuoteAmount(), 41900.0)
 
 	// buy 2150 can fill ask 2100 * 3 and 2150 * 4 & bid left 3 qty
 	bidOrder_qty10 := model.NewOrder("test_bid_02", "test01", model.BID, 2150, 10, model.TAKER)
@@ -92,12 +97,25 @@ func TestOrderBook_TakeLimitOrder_BID(t *testing.T) {
 	assert(t, 2, len(trades_2))
 	assert(t, 25.0+3.0, ob.TotalBidVolume())
 
+	assert(t, ob.TotalBidQuoteAmount(), 55000.0+(3*2150))
+	assert(t, ob.TotalAskQuoteAmount(), 41900.0-(2100*3+2150*4))
+
 	// try add a same orderId
 	bidOrder_qty10_same_id := model.NewOrder("test_bid_02", "test01", model.BID, 2150, 10, model.TAKER)
 	trades_3, err := ob.PlaceOrder(LIMIT, bidOrder_qty10_same_id)
 	assert(t, true, err != nil)
 	fmt.Println(trades_3)
 	fmt.Println(err)
+
+	// cancel bidOrder_qty10
+	order, err := ob.CancelOrder("test_bid_02")
+	assert(t, nil, err)
+	fmt.Println("order", order)
+
+	assert(t, order.RemainingSize, 3.0)
+	assert(t, ob.TotalBidQuoteAmount(), 55000.0)
+	assert(t, ob.TotalBidVolume(), 25.0)
+
 }
 
 func TestOrderBook_TakeMarketOrder(t *testing.T) {

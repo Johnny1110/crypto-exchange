@@ -3,9 +3,9 @@ package book
 import (
 	"errors"
 	"fmt"
+	"github.com/johnny1110/crypto-exchange/engine-v2/market"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
 	"github.com/johnny1110/crypto-exchange/engine-v2/util"
-	"github.com/johnny1110/crypto-exchange/market"
 	"github.com/labstack/gommon/log"
 	"math"
 	"sync"
@@ -351,10 +351,22 @@ func (ob *OrderBook) TotalAskVolume() float64 {
 	return ob.askSide.TotalVolume()
 }
 
+func (ob *OrderBook) TotalAskQuoteAmount() float64 {
+	ob.obMu.RLock()
+	defer ob.obMu.RUnlock()
+	return ob.askSide.TotalQuoteAmount()
+}
+
 func (ob *OrderBook) TotalBidVolume() float64 {
 	ob.obMu.RLock()
 	defer ob.obMu.RUnlock()
 	return ob.bidSide.TotalVolume()
+}
+
+func (ob *OrderBook) TotalBidQuoteAmount() float64 {
+	ob.obMu.RLock()
+	defer ob.obMu.RUnlock()
+	return ob.bidSide.TotalQuoteAmount()
 }
 
 func (ob *OrderBook) LatestPrice() float64 {

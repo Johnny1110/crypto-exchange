@@ -22,9 +22,17 @@ type IUserRepository interface {
 }
 
 type IBalanceRepository interface {
+	// GetBalancesByUserId get balance by userId
 	GetBalancesByUserId(ctx context.Context, db DBExecutor, userId string) ([]*dto.Balance, error)
+	// ModifyAvailableByUserIdAndAsset modify asset balance available amount if sign==true (+), sign==false (-), if available not enough return error.
 	ModifyAvailableByUserIdAndAsset(ctx context.Context, db DBExecutor, userID, asset string, sign bool, amount float64) error
+	// ModifyLockedByUserIdAndAsset modify asset balance locked amount if sign==true (+), sign==false (-), if locked not enough return error.
 	ModifyLockedByUserIdAndAsset(ctx context.Context, db DBExecutor, userID, asset string, sign bool, amount float64) error
+	// LockedByUserIdAndAsset lock user asset available amount (decrease) and add locked amount, if available not enough return error.
+	LockedByUserIdAndAsset(ctx context.Context, db DBExecutor, userID, asset string, amount float64) error
+	// UnlockedByUserIdAndAsset unlock user asset locked amount (decrease) and add available amount, if locked not enough return error.
+	UnlockedByUserIdAndAsset(ctx context.Context, db DBExecutor, userID, asset string, amount float64) error
+	// BatchCreate batch insert by userId and assets slice. available and locked default = 0.0
 	BatchCreate(ctx context.Context, db DBExecutor, userId string, assets []string) error
 }
 

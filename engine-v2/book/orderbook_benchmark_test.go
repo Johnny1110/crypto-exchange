@@ -2,8 +2,8 @@ package book
 
 import (
 	"fmt"
+	"github.com/johnny1110/crypto-exchange/engine-v2/market"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
-	"github.com/johnny1110/crypto-exchange/market"
 	"testing"
 )
 

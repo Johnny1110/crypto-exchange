@@ -3,6 +3,7 @@ package dto
 import (
 	"github.com/johnny1110/crypto-exchange/engine-v2/book"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
+	"time"
 )
 
 type Order struct {
@@ -13,9 +14,10 @@ type Order struct {
 	Price         float64           `json:"price"`
 	OriginalSize  float64           `json:"original_size"`
 	RemainingSize float64           `json:"remaining_size"`
+	QuoteAmount   float64           `json:"quote_amount"`
 	Type          book.OrderType    `json:"type"`
 	Mode          model.Mode        `json:"mode"`
 	Status        model.OrderStatus `json:"status"`
-	CreatedAt     int64             `json:"created_at"`
-	UpdatedAt     int64             `json:"updated_at"`
+	CreatedAt     time.Time         `json:"created_at"`
+	UpdatedAt     time.Time         `json:"updated_at"`
 }

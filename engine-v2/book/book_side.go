@@ -13,9 +13,10 @@ import (
 // For ask, highest price has priority; for bid, lowest price.
 // The comparison function depends on the side.
 type BookSide struct {
-	priceLevels *treemap.Map // key: float64 price, value: *util.Deque (price ordered map)
-	isBid       bool         // true = bid side (min-first), false = ask side (max-first)
-	totalVolume float64      // all volume sit in bookSide
+	priceLevels      *treemap.Map // key: float64 price, value: *util.Deque (price ordered map)
+	isBid            bool         // true = bid side (min-first), false = ask side (max-first)
+	totalVolume      float64      // all volume sit in bookSide
+	totalQuoteAmount float64      // all size * price
 }
 
 func NewBookSide(isBid bool) *BookSide {
@@ -27,9 +28,10 @@ func NewBookSide(isBid bool) *BookSide {
 		cmp = utils.Float64Comparator // same comparator
 	}
 	return &BookSide{
-		priceLevels: treemap.NewWith(cmp),
-		isBid:       isBid,
-		totalVolume: 0,
+		priceLevels:      treemap.NewWith(cmp),
+		isBid:            isBid,
+		totalVolume:      0,
+		totalQuoteAmount: 0,
 	}
 }
 
@@ -45,6 +47,7 @@ func (bs *BookSide) AddOrderNode(price float64, node *model.OrderNode) {
 	deque := v.(*util.OrderNodeDeque)
 	deque.PushBack(node)
 	bs.totalVolume += node.Size()
+	bs.totalQuoteAmount += node.Size() * node.Price()
 }
 
 // RemoveOrderNode removes a specific node from the deque at price.
@@ -67,6 +70,7 @@ func (bs *BookSide) RemoveOrderNode(price float64, node *model.OrderNode) error 
 	}
 
 	bs.totalVolume -= node.Size()
+	bs.totalQuoteAmount -= node.Size() * node.Price()
 	return nil
 }
 
@@ -117,6 +121,7 @@ func (bs *BookSide) PopBest() (*model.OrderNode, error) {
 	}
 
 	bs.totalVolume -= node.Size()
+	bs.totalQuoteAmount -= node.Size() * node.Price()
 	return node, nil
 }
 
@@ -135,6 +140,10 @@ func (bs *BookSide) TotalVolume() float64 {
 	return bs.totalVolume
 }
 
+func (bs *BookSide) TotalQuoteAmount() float64 {
+	return bs.totalQuoteAmount
+}
+
 func (bs *BookSide) PutToHead(price float64, node *model.OrderNode) {
 	v, ok := bs.priceLevels.Get(price)
 	if !ok {
@@ -146,4 +155,5 @@ func (bs *BookSide) PutToHead(price float64, node *model.OrderNode) {
 	deque := v.(*util.OrderNodeDeque)
 	deque.PushHead(node)
 	bs.totalVolume += node.Size()
+	bs.totalQuoteAmount += node.Size() * node.Price()
 }

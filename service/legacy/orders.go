@@ -1,4 +1,4 @@
-package service
+package legacy
 
 import (
 	"database/sql"
@@ -8,7 +8,6 @@ import (
 	"github.com/johnny1110/crypto-exchange/engine-v2/book"
 	"github.com/johnny1110/crypto-exchange/engine-v2/core"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
-	"github.com/johnny1110/crypto-exchange/entity"
 	"github.com/labstack/gommon/log"
 	"time"
 )
@@ -16,6 +15,21 @@ import (
 type OrderService struct {
 	DB     *sql.DB
 	Engine *core.MatchingEngine
+}
+
+type OrderEntity struct {
+	ID            string            `json:"id"`
+	UserID        string            `json:"user_id"`
+	Market        string            `json:"market"`
+	Side          model.Side        `json:"side"`
+	Price         float64           `json:"price"`
+	OriginalSize  float64           `json:"original_size"`
+	RemainingSize float64           `json:"remaining_size"`
+	Type          book.OrderType    `json:"type"`
+	Mode          model.Mode        `json:"mode"`
+	Status        model.OrderStatus `json:"status"`
+	CreatedAt     time.Time         `json:"created_at"`
+	UpdatedAt     time.Time         `json:"updated_at"`
 }
 
 type PlaceOrderRequest struct {
@@ -310,13 +324,13 @@ func (s *OrderService) settleTrade(tx *sql.Tx, trade *book.Trade, eatenOrder *mo
 }
 
 // GetOrderDetailByID returns an order's detail and its trades by ID.
-func (s *OrderService) GetOrderDetailByID(orderID string) (*entity.OrderEntity, error) {
+func (s *OrderService) GetOrderDetailByID(orderID string) (*OrderEntity, error) {
 	// 1. Query order row
 	row := s.DB.QueryRow(
 		`SELECT id, user_id, market, side, price, original_size, remaining_size, type, mode, status, created_at, updated_at
          FROM orders WHERE id = ?`, orderID)
 
-	var e entity.OrderEntity
+	var e OrderEntity
 	err := row.Scan(
 		&e.ID,
 		&e.UserID,

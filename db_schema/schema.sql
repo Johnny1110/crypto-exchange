@@ -32,7 +32,7 @@ CREATE TABLE orders
     updated_at     DATETIME
 );
 
-create table trades_dg_tmp
+create table trades
 (
     id           INTEGER
         primary key autoincrement,

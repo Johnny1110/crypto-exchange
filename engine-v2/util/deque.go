@@ -131,3 +131,13 @@ func (d *OrderNodeDeque) Size() int {
 func (d *OrderNodeDeque) Volume() float64 {
 	return d.volume
 }
+
+// QuoteAmount returns the quoteAmt(price * allVolume).
+func (d *OrderNodeDeque) QuoteAmount() float64 {
+	node := d.PeekFront()
+	if node == nil {
+		return 0
+	}
+
+	return node.Price() * d.volume
+}
