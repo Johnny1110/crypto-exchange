@@ -19,6 +19,8 @@ CREATE TABLE balances
     PRIMARY KEY (user_id, asset)
 );
 
+CREATE INDEX idx_balances_asset ON balances(asset);
+
 DROP TABLE IF EXISTS orders;
 CREATE TABLE orders
 (
@@ -38,6 +40,13 @@ CREATE TABLE orders
     updated_at     DATETIME
 );
 
+CREATE INDEX idx_orders_user_id ON orders(user_id, status, created_at);
+-- Active orders by market, status (critical for order book)
+CREATE INDEX idx_orders_market_side_status ON orders(market, status, created_at);
+-- Time-based queries (recent orders, order history)
+CREATE INDEX idx_orders_created_at ON orders(created_at);
+CREATE INDEX idx_orders_updated_at ON orders(updated_at);
+
 
 DROP TABLE IF EXISTS trades;
 create table trades
@@ -50,3 +59,11 @@ create table trades
     size         REAL     not null,
     timestamp    DATETIME not null
 );
+
+-- Individual order trade lookup
+CREATE INDEX idx_trades_ask_order_id ON trades(ask_order_id);
+CREATE INDEX idx_trades_bid_order_id ON trades(bid_order_id);
+-- Time-based trade queries
+CREATE INDEX idx_trades_timestamp ON trades(timestamp);
+-- Price-based queries (for analytics)
+CREATE INDEX idx_trades_price ON trades(price);

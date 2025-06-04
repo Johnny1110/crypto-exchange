@@ -72,6 +72,7 @@ func NewEngineOrderByOrderDto(orderDto *dto.Order) *model.Order {
 type DealtOrderUpdateData struct {
 	OrderID                 string
 	RemainingSizeDecreasing float64
+	DealtQuoteAmount        float64 // dealt amt (quote)
 }
 
 type DealtOrderSettlementData struct {
@@ -87,9 +88,6 @@ func TidyUpTradesData(baseAsset, quoteAsset string, freezeAsset string, freezeAm
 	// uid: DealtOrderSettlementData
 	userSettlements := make(map[string]*DealtOrderSettlementData)
 
-	// Add eaten order first.
-	orderUpdates = append(orderUpdates, &DealtOrderUpdateData{eatenOrder.ID, eatenOrder.OriginalSize - eatenOrder.RemainingSize})
-
 	isEatenOrderLimitBuy := eatenOrder.Side == model.BID && eatenOrder.Type == book.LIMIT
 
 	userIds := make(map[string]bool)
@@ -100,6 +98,9 @@ func TidyUpTradesData(baseAsset, quoteAsset string, freezeAsset string, freezeAm
 	for uid := range userIds {
 		userSettlements[uid] = &DealtOrderSettlementData{}
 	}
+
+	totalDealtAmt := 0.0
+	totalDealtSize := 0.0
 
 	// loop trades
 	for _, trade := range trades {
@@ -112,6 +113,8 @@ func TidyUpTradesData(baseAsset, quoteAsset string, freezeAsset string, freezeAm
 
 		// actual dealt Trade Quote Amt
 		actualDealtQuoteAmt := tradePrice * tradeSize
+		totalDealtAmt += actualDealtQuoteAmt
+		totalDealtSize += tradeSize
 
 		askUserSettlementData, _ := userSettlements[askUid]
 		bidUserSettlementData, _ := userSettlements[bidUid]
@@ -138,11 +141,17 @@ func TidyUpTradesData(baseAsset, quoteAsset string, freezeAsset string, freezeAm
 
 		// 3. collect opposite order update info
 		if eatenOrder.Side == model.BID {
-			orderUpdates = append(orderUpdates, &DealtOrderUpdateData{askOrderId, tradeSize})
+			orderUpdates = append(orderUpdates, &DealtOrderUpdateData{OrderID: askOrderId, RemainingSizeDecreasing: tradeSize, DealtQuoteAmount: actualDealtQuoteAmt})
 		} else {
-			orderUpdates = append(orderUpdates, &DealtOrderUpdateData{bidOrderId, tradeSize})
+			orderUpdates = append(orderUpdates, &DealtOrderUpdateData{OrderID: bidOrderId, RemainingSizeDecreasing: tradeSize, DealtQuoteAmount: actualDealtQuoteAmt})
 		}
 	}
+
+	// Add eaten order as last one.
+	orderUpdates = append(orderUpdates, &DealtOrderUpdateData{OrderID: eatenOrder.ID, RemainingSizeDecreasing: totalDealtSize, DealtQuoteAmount: totalDealtAmt})
+	// update eatenOrder
+	eatenOrder.AvgDealtPrice = totalDealtAmt / totalDealtSize
+	eatenOrder.QuoteAmount = totalDealtAmt
 
 	return orderUpdates, userSettlements, nil
 }

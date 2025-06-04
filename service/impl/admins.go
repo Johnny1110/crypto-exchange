@@ -97,35 +97,35 @@ func (as adminService) TestAutoMakeMarket(ctx context.Context) error {
 		Side:      model.ASK,
 		OrderType: book.LIMIT,
 		Mode:      model.MAKER,
-		Price:     3000,
+		Price:     3500,
 		Size:      10,
 	})
 	_, _ = as.orderService.PlaceOrder(ctx, market, "1", &dto.OrderReq{
 		Side:      model.ASK,
 		OrderType: book.LIMIT,
 		Mode:      model.MAKER,
-		Price:     2900,
+		Price:     3400,
 		Size:      10,
 	})
 	_, _ = as.orderService.PlaceOrder(ctx, market, "1", &dto.OrderReq{
 		Side:      model.ASK,
 		OrderType: book.LIMIT,
 		Mode:      model.MAKER,
-		Price:     2800,
+		Price:     3300,
 		Size:      10,
 	})
 	_, _ = as.orderService.PlaceOrder(ctx, market, "1", &dto.OrderReq{
 		Side:      model.ASK,
 		OrderType: book.LIMIT,
 		Mode:      model.MAKER,
-		Price:     2700,
+		Price:     3200,
 		Size:      10,
 	})
 	_, _ = as.orderService.PlaceOrder(ctx, market, "1", &dto.OrderReq{
 		Side:      model.ASK,
 		OrderType: book.LIMIT,
 		Mode:      model.MAKER,
-		Price:     2600,
+		Price:     3100,
 		Size:      10,
 	})
 

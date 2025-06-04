@@ -218,9 +218,11 @@ func (o orderRepository) GetOrdersByUserIdAndStatuses(ctx context.Context, db re
 	return orders, nil
 }
 
-func (o orderRepository) DecreaseRemainingSize(ctx context.Context, db repository.DBExecutor, orderId string, decreasingSize float64) error {
+func (o orderRepository) SyncTradeMatchingResult(ctx context.Context, db repository.DBExecutor, orderId string, decreasingSize, dealtQuoteAmount float64) error {
 	query := `UPDATE orders SET 
-		remaining_size = remaining_size-?, 
+		remaining_size = remaining_size - ?, 
+		quote_amount = quote_amount + ?,
+		avg_dealt_price = (quote_amount + ?) / (original_size - remaining_size + ?),
 		status = CASE           
 		    					WHEN original_size = 0 THEN ?
 			                  	WHEN remaining_size - ? = 0 THEN ?
@@ -230,6 +232,9 @@ func (o orderRepository) DecreaseRemainingSize(ctx context.Context, db repositor
 		WHERE id = ?`
 
 	result, err := db.ExecContext(ctx, query,
+		decreasingSize,
+		dealtQuoteAmount,
+		dealtQuoteAmount,
 		decreasingSize,
 		model.ORDER_STATUS_FILLED,
 		decreasingSize,
@@ -241,7 +246,7 @@ func (o orderRepository) DecreaseRemainingSize(ctx context.Context, db repositor
 	)
 
 	if err != nil {
-		return fmt.Errorf("failed to DecreaseRemainingSize order: %w", err)
+		return fmt.Errorf("failed to SyncTradeMatchingResult order: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()

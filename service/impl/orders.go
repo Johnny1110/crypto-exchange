@@ -152,9 +152,10 @@ func (s *orderService) placingLimitOrder(ctx context.Context, market, userID str
 	// Txn-2: handle matching trades flow and update orders.
 	err = WithTx(ctx, s.db, func(tx *sql.Tx) error {
 		for _, ou := range orderUpdates {
-			err = s.orderRepo.DecreaseRemainingSize(ctx, tx, ou.OrderID, ou.RemainingSizeDecreasing)
+			// decreasing order remainingSize and update quoteAmt, avgDealtAmt
+			err = s.orderRepo.SyncTradeMatchingResult(ctx, tx, ou.OrderID, ou.RemainingSizeDecreasing, ou.DealtQuoteAmount)
 			if err != nil {
-				log.Errorf("[placingLimitOrder] DecreaseRemainingSize err: %v", err)
+				log.Errorf("[placingLimitOrder] SyncTradeMatchingResult err: %v", err)
 				return err
 			}
 		}
