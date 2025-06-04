@@ -22,10 +22,11 @@ Response-Body:
 ```json
 {
     "code": "0000000",
+    "message": "success",
+    "timestamp": 1749025140955,
     "data": {
-        "userId": "92b229e2-447c-4775-8ad8-320b0b492e3d"
-    },
-    "message": "success"
+        "user_id": "7c775fbc-c907-4f26-8d33-05e6820875c7"
+    }
 }
 ```
 
@@ -48,13 +49,14 @@ Request-Body:
 
 Response-Body:
 
-```
+```json
 {
     "code": "0000000",
+    "message": "success",
+    "timestamp": 1749025156135,
     "data": {
-        "token": "5e5c2694-9b3b-4097-8381-f36a55745117"
-    },
-    "message": "success"
+        "token": "de1160b7-6935-4c24-b230-826902f54d84"
+    }
 }
 ```
 
@@ -77,7 +79,43 @@ Response-Body:
 ```json
 {
     "code": "0000000",
-    "data": null,
-    "message": "success"
+    "message": "success",
+    "timestamp": 1749025184954,
+    "data": null
 }
 ```
+
+<br>
+
+## Get User Profile
+
+URI: `/api/v1/users/profile`
+
+Method: GET
+
+Header:
+
+```
+Authorization: string (login token)
+```
+
+Response-Body:
+
+```json
+{
+    "code": "0000000",
+    "message": "success",
+    "timestamp": 1749025620285,
+    "data": {
+        "id": "b0453c6a-1327-43ad-a9ec-836694b51e76",
+        "username": "johnny",
+        "vip_level": 1,
+        "maker_fee": 0.05,
+        "taker_fee": 0.2
+    }
+}
+```
+
+* maker_fee: user's maker trading fee rate.
+
+* taker_fee: user's taker trading fee rate.

@@ -24,7 +24,7 @@ func (c UserController) Register(context *gin.Context) {
 		return
 	}
 
-	context.JSON(http.StatusOK, HandleSuccess(map[string]any{"userId": userId}))
+	context.JSON(http.StatusOK, HandleSuccess(map[string]any{"user_id": userId}))
 	return
 }
 
@@ -50,7 +50,7 @@ func (c UserController) GetProfile(context *gin.Context) {
 		context.JSON(http.StatusBadRequest, HandleCodeError(USER_DATA_NOT_FOUND, err))
 		return
 	}
-	context.JSON(http.StatusOK, HandleSuccess(map[string]any{"username": user.Username, "userId": userId}))
+	context.JSON(http.StatusOK, HandleSuccess(user))
 	return
 }
 

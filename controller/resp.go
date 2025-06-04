@@ -1,24 +1,50 @@
 package controller
 
-import "github.com/gin-gonic/gin"
+import (
+	"time"
+)
 
-func HandleError(err error) map[string]any {
-	return gin.H{"code": SYSTEM_ERROR, "message": err.Error()}
+type Resp struct {
+	Code      MessageCode `json:"code"`
+	Msg       string      `json:"message"`
+	Timestamp int64       `json:"timestamp"`
+	Data      any         `json:"data"`
 }
 
-func HandleCodeError(code MessageCode, err error) map[string]any {
-	return gin.H{"code": code, "message": err.Error()}
+func HandleError(err error) any {
+	return &Resp{
+		Code:      SYSTEM_ERROR,
+		Msg:       err.Error(),
+		Timestamp: time.Now().UnixMilli(),
+	}
 }
 
-func HandleCodeErrorAndMsg(code MessageCode, msg string) map[string]any {
-	return gin.H{"code": code, "message": msg}
+func HandleCodeError(code MessageCode, err error) any {
+	return &Resp{
+		Code:      code,
+		Msg:       err.Error(),
+		Timestamp: time.Now().UnixMilli(),
+	}
 }
 
-func HandleSuccess(data any) map[string]any {
-	return gin.H{"code": SUCCESS, "message": "success", "data": data}
+func HandleCodeErrorAndMsg(code MessageCode, msg string) any {
+	return &Resp{
+		Code:      code,
+		Msg:       msg,
+		Timestamp: time.Now().UnixMilli(),
+	}
 }
 
-func HandleInvalidInput() map[string]any {
+func HandleSuccess(data any) any {
+	return &Resp{
+		Code:      SUCCESS,
+		Msg:       "success",
+		Data:      data,
+		Timestamp: time.Now().UnixMilli(),
+	}
+}
+
+func HandleInvalidInput() any {
 	return HandleCodeErrorAndMsg(INVALID_PARAMS, "invalid input")
 }
 

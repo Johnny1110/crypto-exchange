@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"encoding/json"
 	"github.com/johnny1110/crypto-exchange/engine-v2/book"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
 	"time"
@@ -19,6 +20,19 @@ type Order struct {
 	Type          book.OrderType    `json:"type"`
 	Mode          model.Mode        `json:"mode"`
 	Status        model.OrderStatus `json:"status"`
-	CreatedAt     time.Time         `json:"created_at"`
-	UpdatedAt     time.Time         `json:"updated_at"`
+	CreatedAt     time.Time         `json:"-"`
+	UpdatedAt     time.Time         `json:"-"`
+}
+
+func (o Order) MarshalJSON() ([]byte, error) {
+	type Alias Order
+	return json.Marshal(&struct {
+		*Alias
+		CreatedAt int64 `json:"created_at"`
+		UpdatedAt int64 `json:"updated_at"`
+	}{
+		Alias:     (*Alias)(&o),
+		CreatedAt: o.CreatedAt.UnixMilli(),
+		UpdatedAt: o.UpdatedAt.UnixMilli(),
+	})
 }

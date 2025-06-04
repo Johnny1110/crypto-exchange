@@ -125,6 +125,7 @@ func setupRoutes(
 	}
 }
 
+// initDB if testMode = true, everytime startup the app, it will rebuild database with schema and prepare mock data.
 func initDB(testMode bool) (*sql.DB, error) {
 	// for windows
 	db, err := sql.Open("sqlite", "file:exg.db")

@@ -30,6 +30,42 @@ Request-Body:
 
 <br>
 
+Response-Body:
+```json
+{
+    "code": "0000000",
+    "message": "success",
+    "timestamp": 1749024658921,
+    "data": {
+        "matches": [
+            {
+                "price": 3100, // dealt price
+                "size": 0.1, // dealt qty
+                "timestamp": 1749024658915 // dealt time (millsec)
+            }
+        ],
+        "order": {
+            "id": "3029de80-2767-44dd-89b5-653a539a96d5", // request orderId
+            "user_id": "bc5eef14-de49-4804-992c-cac6ea0db6fb",
+            "market": "ETH-USDT",
+            "side": 0, // 0:buy order, 1: sell order
+            "price": 3150, // limit price
+            "original_size": 0.1, // request qty
+            "remaining_size": 0, // 0 if all filled
+            "quote_amount": 310, // buy order: total cost / sell order: total paid
+            "avg_dealt_price": 3100, // avg dealt price
+            "type": 0, // 0: limit order, 1: market order
+            "mode": 1, // 0: maker, 1: taker
+            "status": "FILLED",
+            "created_at": 1749024658911,
+            "updated_at": 1749024658911
+        }
+    }
+}
+```
+
+<br>
+
 Params:
 
 * side: 0=Bid(Buy), 1=-Ask(Sell)
@@ -87,7 +123,7 @@ Request-Body:
     "side": 1, // sell
     "order_type": 0, // limit
     "mode": 1, // taker (user)
-    "price": $2600,
+    "price": 2600,
     "size": 0.131
 }
 ```
@@ -110,7 +146,7 @@ Request-Body:
 {
 "side": 0, // sell
 "order_type": 1, // market
-"quote_amount": $300
+"quote_amount": 300
 }
 ```
 

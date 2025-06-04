@@ -18,6 +18,8 @@ Response-Body:
 ```json
 {
     "code": "0000000",
+    "message": "success",
+    "timestamp": 1749024630775,
     "data": [
         {
             "asset": "ASTR",
@@ -39,9 +41,9 @@ Response-Body:
         },
         {
             "asset": "ETH",
-            "available": 5,
+            "available": 0,
             "locked": 0,
-            "total": 5
+            "total": 0
         },
         {
             "asset": "HDX",
@@ -51,12 +53,11 @@ Response-Body:
         },
         {
             "asset": "USDT",
-            "available": 9000,
+            "available": 3150,
             "locked": 0,
-            "total": 9000
+            "total": 3150
         }
-    ],
-    "message": "success"
+    ]
 }
 ```
 

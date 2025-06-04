@@ -23,17 +23,15 @@ Request-Body:
 }
 ```
 
+Response-Body:
+
+```json
+{
+    "code": "0000000",
+    "message": "success",
+    "timestamp": 1749024602941,
+    "data": null
+}
+```
+
 <br>
-
-
-## Trigger Auto Market Maker (For Testing)
-
-URI: `/admin/api/v1/auto-market-maker`
-
-Method: POST
-
-Headers:
-
-```
-Admin-Token: string (using 'frizo' for testing)
-```
