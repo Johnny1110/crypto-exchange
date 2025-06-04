@@ -78,5 +78,5 @@ message code
 	BAD_REQUEST   MessageCode = "9000001"
 	ACCESS_DENIED MessageCode = "9900001"
 	SYSTEM_ERROR  MessageCode = "9999999"
-)
+
 ```
