@@ -41,7 +41,7 @@ $> node node_modules/.bin/ganache
 
 * Database
 
-    * [Schema](doc/db_schema/db_schema_sql)
+    * [Schema](doc/db_schema/schema.sql)
     * [Testing Data](doc/db_schema/testing_data.sql)
 
 <br>
