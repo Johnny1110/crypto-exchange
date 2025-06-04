@@ -51,25 +51,67 @@ func (s *orderService) PlaceOrder(ctx context.Context, market, userID string, re
 		return nil, err
 	}
 	freezeAsset, freezeAmt := serviceHelper.DetermineFreezeValue(req, baseAsset, quoteAsset)
+
+	assetDetails := &orderAssetDetails{
+		freezeAmount: freezeAmt,
+		baseAsset:    baseAsset,
+		quoteAsset:   quoteAsset,
+		freezeAsset:  freezeAsset,
+	}
+
+	// call placing limit order | market order:
+	var orderDto *dto.Order
+	var trades []book.Trade
+	switch req.OrderType {
+	case book.LIMIT:
+		orderDto, trades, err = s.placingLimitOrder(ctx, market, userID, req, assetDetails)
+		break
+	case book.MARKET:
+		orderDto, trades, err = s.placingMarketOrder(ctx, market, userID, req, assetDetails)
+		break
+	}
+
+	if err != nil {
+		log.Errorf("[PlaceOrder] failed to placing type order, err: %v", err)
+		return nil, err
+	}
+
+	return serviceHelper.WrapPlaceOrderResult(orderDto, trades), err
+}
+
+// Core Logic (Placing 2 types of Order) >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+type orderAssetDetails struct {
+	baseAsset, quoteAsset, freezeAsset string
+	freezeAmount                       float64
+}
+
+func (s *orderService) placingLimitOrder(ctx context.Context, market, userID string, req *dto.OrderReq, assetDetails *orderAssetDetails) (*dto.Order, []book.Trade, error) {
 	orderDto := serviceHelper.NewOrderDtoByOrderReq(market, userID, req)
 
-	log.Infof("[PlaceOrder] orderDto: %v", orderDto)
+	log.Infof("[placingLimitOrder] orderDto: %v", orderDto)
 
+	var err error
 	var trades []book.Trade
+
+	freezeAsset := assetDetails.freezeAsset // The Asset that will be locked by incoming order's userId
+	freezeAmt := assetDetails.freezeAmount  // The Asset's Amount that will be locked by incoming order's userId
+	baseAsset := assetDetails.baseAsset     // Market base asset (ex: ETH, BTC)
+	quoteAsset := assetDetails.quoteAsset   // Market quote asset (ex: USDT, USDC)
 
 	// Txn-1: process placing order flow.
 	err = WithTx(ctx, s.db, func(tx *sql.Tx) error {
 		// 1. Freeze funds based on market and side.
 		err = s.balanceRepo.LockedByUserIdAndAsset(ctx, tx, userID, freezeAsset, freezeAmt)
 		if err != nil {
-			log.Warnf("[PlaceOrder] BalanceRepo.LockedByUserIdAndAsset err: %v", err)
+			log.Warnf("[placingLimitOrder] BalanceRepo.LockedByUserIdAndAsset err: %v", err)
 			return err
 		}
 
 		// 2. Save new orderDto into DB.
 		err = s.orderRepo.Insert(ctx, tx, orderDto)
 		if err != nil {
-			log.Errorf("[PlaceOrder] OrderRepo.Insert err: %v", err)
+			log.Errorf("[placingLimitOrder] OrderRepo.Insert err: %v", err)
 			return err
 		}
 
@@ -77,7 +119,7 @@ func (s *orderService) PlaceOrder(ctx context.Context, market, userID string, re
 		engineOrder := serviceHelper.NewEngineOrderByOrderDto(orderDto)
 		trades, err = s.engine.PlaceOrder(market, req.OrderType, engineOrder)
 		if err != nil {
-			log.Errorf("[PlaceOrder] engine.PlaceOrder err: %v", err)
+			log.Errorf("[placingLimitOrder] engine.PlaceOrder err: %v", err)
 			return err
 		}
 		// dump engineOrder size&status to orderDto
@@ -87,24 +129,24 @@ func (s *orderService) PlaceOrder(ctx context.Context, market, userID string, re
 		// 4. Save all matching trade details
 		err = s.tradeRepo.BatchInsert(ctx, tx, trades)
 		if err != nil {
-			log.Errorf("[PlaceOrder] tradeRepo.BatchInsert err: %v", err)
+			log.Errorf("[placingLimitOrder] tradeRepo.BatchInsert err: %v", err)
 			return err
 		}
 
 		return err
 	})
 
-	// Txn-1 Got Error:
+	// IF Txn-1 Got Error:
 	if err != nil {
-		log.Errorf("[PlaceOrder] PlaceOrder Txn-1 process has err: %v", err)
-		return nil, err
+		log.Errorf("[placingLimitOrder] PlaceOrder Txn-1 process has err: %v", err)
+		return nil, trades, err
 	}
 
 	// Collect trades data to updateOrderDataList and settlementList
 	orderUpdates, userSettlements, err := serviceHelper.TidyUpTradesData(baseAsset, quoteAsset, freezeAsset, freezeAmt, orderDto, trades)
 	if err != nil {
-		log.Errorf("[PlaceOrder] TidyUpTradesData err: %v", err)
-		return nil, err
+		log.Errorf("[placingLimitOrder] TidyUpTradesData err: %v", err)
+		return nil, trades, err
 	}
 
 	// Txn-2: handle matching trades flow and update orders.
@@ -112,7 +154,7 @@ func (s *orderService) PlaceOrder(ctx context.Context, market, userID string, re
 		for _, ou := range orderUpdates {
 			err = s.orderRepo.DecreaseRemainingSize(ctx, tx, ou.OrderID, ou.RemainingSizeDecreasing)
 			if err != nil {
-				log.Errorf("[PlaceOrder] DecreaseRemainingSize err: %v", err)
+				log.Errorf("[placingLimitOrder] DecreaseRemainingSize err: %v", err)
 				return err
 			}
 		}
@@ -120,20 +162,32 @@ func (s *orderService) PlaceOrder(ctx context.Context, market, userID string, re
 		for userId, us := range userSettlements {
 			err = s.balanceRepo.UpdateAsset(ctx, tx, userId, baseAsset, us.BaseAssetAvailable, us.BaseAssetLocked)
 			if err != nil {
-				log.Errorf("[PlaceOrder] Update Base Asset err: %v", err)
+				log.Errorf("[placingLimitOrder] Update Base Asset err: %v", err)
 				return err
 			}
 			err = s.balanceRepo.UpdateAsset(ctx, tx, userId, quoteAsset, us.QuoteAssetAvailable, us.QuoteAssetLocked)
 			if err != nil {
-				log.Errorf("[PlaceOrder] Update Quote Asset err: %v", err)
+				log.Errorf("[placingLimitOrder] Update Quote Asset err: %v", err)
 				return err
 			}
 		}
 		return nil
 	})
 
-	return serviceHelper.WrapPlaceOrderResult(orderDto, trades), err
+	if err != nil {
+		log.Errorf("[placingLimitOrder] PlaceOrder Txn-2 process has err: %v", err)
+		return nil, trades, err
+	}
+
+	return orderDto, trades, nil
 }
+
+func (s *orderService) placingMarketOrder(ctx context.Context, market, userID string, req *dto.OrderReq, assetDetails *orderAssetDetails) (*dto.Order, []book.Trade, error) {
+	// TODO
+	return nil, nil, errors.New("not implemented")
+}
+
+// Core Logic (Placing 2 types of Order) <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 func (s *orderService) CancelOrder(ctx context.Context, market, userID, orderID string) (*dto.Order, error) {
 	if market == "" || userID == "" || orderID == "" {
