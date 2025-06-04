@@ -39,7 +39,7 @@ func DetermineFreezeValue(req *dto.OrderReq, base string, quote string) (freezeA
 	return freezeAsset, freezeAmt
 }
 
-func NewOrderDtoByOrderReq(market, userID string, req *dto.OrderReq) *dto.Order {
+func NewLimitOrderDtoByOrderReq(market, userID string, req *dto.OrderReq) *dto.Order {
 	return &dto.Order{
 		ID:            uuid.NewString(),
 		UserID:        userID,
@@ -48,10 +48,29 @@ func NewOrderDtoByOrderReq(market, userID string, req *dto.OrderReq) *dto.Order 
 		Price:         req.Price,
 		OriginalSize:  req.Size,
 		RemainingSize: req.Size,
+		QuoteAmount:   0.0,
+		AvgDealtPrice: 0.0,
+		Type:          book.LIMIT,
+		Mode:          req.Mode,
+		Status:        model.ORDER_STATUS_NEW,
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
+	}
+}
+
+func NewMarketOrderDtoByOrderReq(market, userID string, req *dto.OrderReq) *dto.Order {
+	return &dto.Order{
+		ID:            uuid.NewString(),
+		UserID:        userID,
+		Market:        market,
+		Side:          req.Side,
+		Price:         -1,
+		OriginalSize:  0,
+		RemainingSize: 0,
 		QuoteAmount:   req.QuoteAmount,
 		AvgDealtPrice: 0.0,
-		Type:          req.OrderType,
-		Mode:          req.Mode,
+		Type:          book.MARKET,
+		Mode:          model.TAKER,
 		Status:        model.ORDER_STATUS_NEW,
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
@@ -82,7 +101,7 @@ type DealtOrderSettlementData struct {
 	QuoteAssetLocked    float64
 }
 
-func TidyUpTradesData(baseAsset, quoteAsset string, freezeAsset string, freezeAmt float64, eatenOrder *dto.Order, trades []book.Trade) ([]*DealtOrderUpdateData, map[string]*DealtOrderSettlementData, error) {
+func TidyUpLimitTradesData(baseAsset, quoteAsset string, freezeAsset string, freezeAmt float64, eatenOrder *dto.Order, trades []book.Trade) ([]*DealtOrderUpdateData, map[string]*DealtOrderSettlementData, error) {
 	// count of eaten order + matching orders = len(trades)+1
 	orderUpdates := make([]*DealtOrderUpdateData, 0, len(trades)+1)
 	// uid: DealtOrderSettlementData

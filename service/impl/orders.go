@@ -87,7 +87,7 @@ type orderAssetDetails struct {
 }
 
 func (s *orderService) placingLimitOrder(ctx context.Context, market, userID string, req *dto.OrderReq, assetDetails *orderAssetDetails) (*dto.Order, []book.Trade, error) {
-	orderDto := serviceHelper.NewOrderDtoByOrderReq(market, userID, req)
+	orderDto := serviceHelper.NewLimitOrderDtoByOrderReq(market, userID, req)
 
 	log.Infof("[placingLimitOrder] orderDto: %v", orderDto)
 
@@ -143,7 +143,7 @@ func (s *orderService) placingLimitOrder(ctx context.Context, market, userID str
 	}
 
 	// Collect trades data to updateOrderDataList and settlementList
-	orderUpdates, userSettlements, err := serviceHelper.TidyUpTradesData(baseAsset, quoteAsset, freezeAsset, freezeAmt, orderDto, trades)
+	orderUpdates, userSettlements, err := serviceHelper.TidyUpLimitTradesData(baseAsset, quoteAsset, freezeAsset, freezeAmt, orderDto, trades)
 	if err != nil {
 		log.Errorf("[placingLimitOrder] TidyUpTradesData err: %v", err)
 		return nil, trades, err
@@ -184,7 +184,62 @@ func (s *orderService) placingLimitOrder(ctx context.Context, market, userID str
 }
 
 func (s *orderService) placingMarketOrder(ctx context.Context, market, userID string, req *dto.OrderReq, assetDetails *orderAssetDetails) (*dto.Order, []book.Trade, error) {
-	// TODO
+	orderDto := serviceHelper.NewMarketOrderDtoByOrderReq(market, userID, req)
+	log.Infof("[placingMarketOrder] orderDto: %v", orderDto)
+
+	var err error
+	var trades []book.Trade
+
+	freezeAsset := assetDetails.freezeAsset // The Asset that will be locked by incoming order's userId
+	freezeAmt := assetDetails.freezeAmount  // The Asset's Amount that will be locked by incoming order's userId
+	baseAsset := assetDetails.baseAsset     // Market base asset (ex: ETH, BTC)
+	quoteAsset := assetDetails.quoteAsset   // Market quote asset (ex: USDT, USDC)
+
+	// Txn-1: process placing order flow.
+	err = WithTx(ctx, s.db, func(tx *sql.Tx) error {
+		// 1. Freeze funds based on market and side.
+		err = s.balanceRepo.LockedByUserIdAndAsset(ctx, tx, userID, freezeAsset, freezeAmt)
+		if err != nil {
+			log.Warnf("[placingLimitOrder] BalanceRepo.LockedByUserIdAndAsset err: %v", err)
+			return err
+		}
+
+		// 2. Save new orderDto into DB.
+		err = s.orderRepo.Insert(ctx, tx, orderDto)
+		if err != nil {
+			log.Errorf("[placingLimitOrder] OrderRepo.Insert err: %v", err)
+			return err
+		}
+
+		// 3. Placing Order into engine
+		engineOrder := serviceHelper.NewEngineOrderByOrderDto(orderDto)
+		trades, err = s.engine.PlaceOrder(market, req.OrderType, engineOrder)
+		if err != nil {
+			log.Errorf("[placingLimitOrder] engine.PlaceOrder err: %v", err)
+			return err
+		}
+
+		// 4. Save all matching trade details
+		err = s.tradeRepo.BatchInsert(ctx, tx, trades)
+		if err != nil {
+			log.Errorf("[placingLimitOrder] tradeRepo.BatchInsert err: %v", err)
+			return err
+		}
+
+		// 5. Market Order need update: order.OriginalSize, order.AvgDealtPrice
+		// order.OriginalSize = totalDealtSize
+		// order.AvgDealtPrice = req.QuoteAmount / totalDealtSize
+		// TODO tidyUp Market Order Trades.
+
+		return err
+	})
+
+	// IF Txn-1 Got Error:
+	if err != nil {
+		log.Errorf("[placingLimitOrder] PlaceOrder Txn-1 process has err: %v", err)
+		return nil, trades, err
+	}
+
 	return nil, nil, errors.New("not implemented")
 }
 
