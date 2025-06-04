@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/gin-gonic/gin"
 	"github.com/johnny1110/crypto-exchange/container"
@@ -10,7 +11,12 @@ import (
 	"github.com/johnny1110/crypto-exchange/engine-v2/core"
 	"github.com/johnny1110/crypto-exchange/engine-v2/market"
 	"github.com/johnny1110/crypto-exchange/middleware"
+	"io/ioutil"
 	"log"
+	"os"
+	"path/filepath"
+	"strings"
+
 	// for windows
 	_ "modernc.org/sqlite"
 
@@ -20,7 +26,7 @@ import (
 )
 
 func main() {
-	db, err := initDB()
+	db, err := initDB(true)
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}
@@ -119,7 +125,7 @@ func setupRoutes(
 	}
 }
 
-func initDB() (*sql.DB, error) {
+func initDB(testMode bool) (*sql.DB, error) {
 	// for windows
 	db, err := sql.Open("sqlite", "file:exg.db")
 	// for Mac
@@ -128,7 +134,82 @@ func initDB() (*sql.DB, error) {
 		return nil, err
 	}
 	db.SetMaxOpenConns(1)
+
+	// Test the connection
+	if err := db.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
+
+	log.Println("Database initialized successfully")
+
+	// Run SQL files on startup if testMode
+	if testMode {
+		if err := runSQLFilesWithTransaction(db); err != nil {
+			return nil, fmt.Errorf("failed to run SQL files: %w", err)
+		}
+		log.Println("DB schema and testing data initialized successfully")
+	}
+
 	return db, err
+}
+
+func runSQLFilesWithTransaction(db *sql.DB) error {
+	sqlFiles := []string{
+		"./doc/db_schema/schema.sql",
+		"./doc/db_schema/testing_data.sql",
+	}
+
+	for _, filePath := range sqlFiles {
+		if err := executeSQLFileWithTransaction(db, filePath); err != nil {
+			return fmt.Errorf("failed to execute %s: %w", filePath, err)
+		}
+		log.Printf("Successfully executed: %s", filePath)
+	}
+
+	return nil
+}
+
+func executeSQLFileWithTransaction(db *sql.DB, filePath string) error {
+	// Check if file exists
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return fmt.Errorf("SQL file does not exist: %s", filePath)
+	}
+
+	// Read the SQL file
+	content, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to read SQL file %s: %w", filePath, err)
+	}
+
+	// Start transaction
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback() // Will be ignored if tx.Commit() succeeds
+
+	// Split the content by semicolons to handle multiple statements
+	statements := strings.Split(string(content), ";")
+
+	// Execute each statement within the transaction
+	for i, statement := range statements {
+		statement = strings.TrimSpace(statement)
+		if statement == "" {
+			continue
+		}
+
+		if _, err := tx.Exec(statement); err != nil {
+			return fmt.Errorf("failed to execute statement %d in %s: %w\nStatement: %s",
+				i+1, filepath.Base(filePath), err, statement)
+		}
+	}
+
+	// Commit the transaction
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
 }
 
 // initMarkets define markets here.
