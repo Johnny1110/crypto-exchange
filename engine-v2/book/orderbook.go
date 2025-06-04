@@ -329,10 +329,8 @@ func (ob *OrderBook) takeMarketAskOrder(order *model.Order) (trades []Trade, err
 		return nil, errors.New("not enough volume for market ask order")
 	}
 
-	remainingQty := order.RemainingSize
-
 	// loop until order fulfilled or break by stop limit
-	for remainingQty > 0 {
+	for order.RemainingSize > 0 {
 		bestNode, err := opposite.PopBest()
 		if err != nil {
 			log.Errorf("[OrderBook] takeMarketAskOrder critical error, "+
@@ -343,8 +341,8 @@ func (ob *OrderBook) takeMarketAskOrder(order *model.Order) (trades []Trade, err
 		oppositeOrder := bestNode.Order
 
 		// Determine trade qty
-		tradeQty := remainingQty
-		if oppositeOrder.RemainingSize < remainingQty {
+		tradeQty := order.RemainingSize
+		if oppositeOrder.RemainingSize < tradeQty {
 			tradeQty = oppositeOrder.RemainingSize
 		}
 
@@ -364,7 +362,7 @@ func (ob *OrderBook) takeMarketAskOrder(order *model.Order) (trades []Trade, err
 
 		// Update qty
 		oppositeOrder.RemainingSize -= tradeQty
-		remainingQty -= tradeQty
+		order.RemainingSize -= tradeQty
 
 		// If counter-party still has leftover, put it back into book side (price level head)
 		if oppositeOrder.RemainingSize > 0 {

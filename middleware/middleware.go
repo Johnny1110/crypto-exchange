@@ -5,7 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/johnny1110/crypto-exchange/controller"
 	"github.com/johnny1110/crypto-exchange/security"
-	"log"
+	"github.com/labstack/gommon/log"
 	"net/http"
 	"strings"
 )
@@ -76,7 +76,7 @@ func AuthMiddleware(credentialCache *security.CredentialCache) gin.HandlerFunc {
 		c.Set("username", user.Username)
 		c.Set("token", token)
 
-		log.Println("Logged in user: ", user.Username)
+		log.Infof("Logged in user: %s", user.Username)
 
 		c.Next()
 	}

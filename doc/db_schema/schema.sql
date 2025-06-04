@@ -4,18 +4,18 @@ CREATE TABLE users
     id            TEXT PRIMARY KEY,
     username      TEXT UNIQUE NOT NULL,
     password_hash TEXT        NOT NULL,
-    vip_level     INTEGER,
-    maker_fee      REAL,
-    taker_fee      REAL
+    vip_level     INTEGER DEFAULT 1,
+    maker_fee      REAL NOT NULL,
+    taker_fee      REAL NOT NULL
 );
 
 DROP TABLE IF EXISTS balances;
 CREATE TABLE balances
 (
-    user_id   TEXT,
-    asset     TEXT,
-    available REAL NOT NULL,
-    locked    REAL NOT NULL,
+    user_id   TEXT NOT NULL,
+    asset     TEXT NOT NULL,
+    available REAL DEFAULT 0,
+    locked    REAL DEFAULT 0,
     PRIMARY KEY (user_id, asset)
 );
 
@@ -25,19 +25,19 @@ DROP TABLE IF EXISTS orders;
 CREATE TABLE orders
 (
     id             TEXT PRIMARY KEY,
-    user_id        TEXT,
-    market         TEXT,    -- ex: BTC/USDT ETH/USDT
-    side           INTEGER, -- 0=Bid,1=Ask
-    price          REAL,
-    original_size  REAL,
-    remaining_size REAL,
-    quote_amount   REAL, -- only for market order
-    avg_dealt_price REAL,
-    type           INTEGER, -- 0=LIMIT,1=MARKET
-    mode           INTEGER, -- 0=MAKER,1=TAKER
-    status         TEXT,    -- NEW, FILLED, CANCELED
-    created_at     DATETIME,
-    updated_at     DATETIME
+    user_id        TEXT NOT NULL ,
+    market         TEXT NOT NULL ,    -- ex: BTC/USDT ETH/USDT
+    side           INTEGER NOT NULL, -- 0=Bid,1=Ask
+    price          REAL DEFAULT 0,
+    original_size  REAL DEFAULT 0,
+    remaining_size REAL DEFAULT 0,
+    quote_amount   REAL DEFAULT 0, -- only for market order
+    avg_dealt_price REAL DEFAULT 0,
+    type           INTEGER NOT NULL, -- 0=LIMIT,1=MARKET
+    mode           INTEGER NOT NULL, -- 0=MAKER,1=TAKER
+    status         TEXT NOT NULL,    -- NEW, FILLED, CANCELED
+    created_at     DATETIME NOT NULL,
+    updated_at     DATETIME NOT NULL
 );
 
 CREATE INDEX idx_orders_user_id ON orders(user_id, status, created_at);
@@ -52,12 +52,12 @@ DROP TABLE IF EXISTS trades;
 create table trades
 (
     id           INTEGER
-        primary key autoincrement,
-    ask_order_id TEXT     not null,
-    bid_order_id TEXT     not null,
-    price        REAL     not null,
-    size         REAL     not null,
-    timestamp    DATETIME not null
+        PRIMARY KEY AUTOINCREMENT,
+    ask_order_id TEXT     NOT NULL,
+    bid_order_id TEXT     NOT NULL,
+    price        REAL     NOT NULL,
+    size         REAL     NOT NULL,
+    timestamp    DATETIME NOT NULL
 );
 
 -- Individual order trade lookup

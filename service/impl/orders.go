@@ -143,7 +143,7 @@ func (s *orderService) placingLimitOrder(ctx context.Context, market, userID str
 	}
 
 	// Collect trades data to updateOrderDataList and settlementList
-	orderUpdates, userSettlements, err := serviceHelper.TidyUpLimitTradesData(baseAsset, quoteAsset, freezeAsset, freezeAmt, orderDto, trades)
+	settlementResult, err := serviceHelper.ProcessTradeSettlement(orderDto, trades)
 	if err != nil {
 		log.Errorf("[placingLimitOrder] TidyUpTradesData err: %v", err)
 		return nil, trades, err
@@ -151,7 +151,7 @@ func (s *orderService) placingLimitOrder(ctx context.Context, market, userID str
 
 	// Txn-2: handle matching trades flow and update orders.
 	err = WithTx(ctx, s.db, func(tx *sql.Tx) error {
-		for _, ou := range orderUpdates {
+		for _, ou := range settlementResult.OrderUpdates {
 			// decreasing order remainingSize and update quoteAmt, avgDealtAmt
 			err = s.orderRepo.SyncTradeMatchingResult(ctx, tx, ou.OrderID, ou.RemainingSizeDecreasing, ou.DealtQuoteAmountIncreasing)
 			if err != nil {
@@ -160,7 +160,7 @@ func (s *orderService) placingLimitOrder(ctx context.Context, market, userID str
 			}
 		}
 
-		for userId, us := range userSettlements {
+		for userId, us := range settlementResult.UserSettlements {
 			err = s.balanceRepo.UpdateAsset(ctx, tx, userId, baseAsset, us.BaseAssetAvailable, us.BaseAssetLocked)
 			if err != nil {
 				log.Errorf("[placingLimitOrder] Update Base Asset err: %v", err)
@@ -219,6 +219,10 @@ func (s *orderService) placingMarketOrder(ctx context.Context, market, userID st
 			return err
 		}
 
+		// dump engineOrder size&status to orderDto
+		orderDto.RemainingSize = engineOrder.RemainingSize
+		orderDto.Status = engineOrder.GetStatus()
+
 		// 4. Save all matching trade details
 		err = s.tradeRepo.BatchInsert(ctx, tx, trades)
 		if err != nil {
@@ -245,7 +249,7 @@ func (s *orderService) placingMarketOrder(ctx context.Context, market, userID st
 	}
 
 	// Collect trades data to updateOrderDataList and settlementList
-	orderUpdates, userSettlements, err := serviceHelper.TidyUpMarketTradesData(baseAsset, quoteAsset, freezeAsset, freezeAmt, orderDto, trades)
+	settlementResult, err := serviceHelper.ProcessTradeSettlement(orderDto, trades)
 	if err != nil {
 		log.Errorf("[placingMarketOrder] TidyUpTradesData err: %v", err)
 		return nil, trades, err
@@ -253,7 +257,7 @@ func (s *orderService) placingMarketOrder(ctx context.Context, market, userID st
 
 	// Txn-2: handle matching trades flow and update orders.
 	err = WithTx(ctx, s.db, func(tx *sql.Tx) error {
-		for _, ou := range orderUpdates {
+		for _, ou := range settlementResult.OrderUpdates {
 			// decreasing order remainingSize and update quoteAmt, avgDealtAmt
 			err = s.orderRepo.SyncTradeMatchingResult(ctx, tx, ou.OrderID, ou.RemainingSizeDecreasing, ou.DealtQuoteAmountIncreasing)
 			if err != nil {
@@ -262,7 +266,7 @@ func (s *orderService) placingMarketOrder(ctx context.Context, market, userID st
 			}
 		}
 
-		for userId, us := range userSettlements {
+		for userId, us := range settlementResult.UserSettlements {
 			err = s.balanceRepo.UpdateAsset(ctx, tx, userId, baseAsset, us.BaseAssetAvailable, us.BaseAssetLocked)
 			if err != nil {
 				log.Errorf("[placingMarketOrder] Update Base Asset err: %v", err)

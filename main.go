@@ -11,8 +11,8 @@ import (
 	"github.com/johnny1110/crypto-exchange/engine-v2/core"
 	"github.com/johnny1110/crypto-exchange/engine-v2/market"
 	"github.com/johnny1110/crypto-exchange/middleware"
+	"github.com/labstack/gommon/log"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -51,7 +51,7 @@ func main() {
 		panic("failed to TestAutoMakeMarket")
 	}
 
-	log.Println("Exchange Server starting on :8080")
+	log.Infof("Exchange Server starting on :8080")
 	if err := router.Run(":8080"); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}
@@ -141,14 +141,14 @@ func initDB(testMode bool) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	log.Println("Database initialized successfully")
+	log.Infof("Database initialized successfully")
 
 	// Run SQL files on startup if testMode
 	if testMode {
 		if err := runSQLFilesWithTransaction(db); err != nil {
 			return nil, fmt.Errorf("failed to run SQL files: %w", err)
 		}
-		log.Println("DB schema and testing data initialized successfully")
+		log.Infof("DB schema and testing data initialized successfully")
 	}
 
 	return db, err
@@ -164,7 +164,7 @@ func runSQLFilesWithTransaction(db *sql.DB) error {
 		if err := executeSQLFileWithTransaction(db, filePath); err != nil {
 			return fmt.Errorf("failed to execute %s: %w", filePath, err)
 		}
-		log.Printf("Successfully executed: %s", filePath)
+		log.Infof("Successfully executed: %s", filePath)
 	}
 
 	return nil
