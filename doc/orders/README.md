@@ -49,7 +49,7 @@ Response-Body:
             "user_id": "bc5eef14-de49-4804-992c-cac6ea0db6fb",
             "market": "ETH-USDT",
             "side": 0, // 0:buy order, 1: sell order
-            "price": 3150, // limit price
+            "price": 3150, // limit price (market order don't have price -> null)
             "original_size": 0.1, // request qty
             "remaining_size": 0, // 0 if all filled
             "quote_amount": 310, // buy order: total cost / sell order: total paid
