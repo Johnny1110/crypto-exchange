@@ -7,7 +7,6 @@ import (
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
 	"github.com/johnny1110/crypto-exchange/engine-v2/util"
 	"github.com/labstack/gommon/log"
-	"math"
 	"sync"
 	"time"
 )
@@ -188,7 +187,13 @@ func (ob *OrderBook) PlaceOrder(orderType OrderType, order *model.Order) ([]Trad
 	case MARKET:
 		// MARKET always will be Taker
 		log.Infof("[OrderBook] PlaceOrder (taker) MARKET order, orderID:[%s]", order.ID)
-		trades, err = ob.takeMarketOrder(order)
+		if order.Side == model.BID {
+			// market bid eat opposite order based on order.quoteAmount
+			trades, err = ob.takeMarketBidOrder(order)
+		} else {
+			// market ask eat opposite order based on order.RemainingSize, just like limit ask did.
+			trades, err = ob.takeMarketAskOrder(order)
+		}
 		break
 	default:
 		return nil, fmt.Errorf("unsupported order type: %v", orderType)
@@ -295,8 +300,11 @@ func (ob *OrderBook) takeLimitOrder(order *model.Order) ([]Trade, error) {
 		if bestNode.Order.RemainingSize > 0 {
 			opposite.PutToHead(bestPrice, bestNode)
 		} else {
-			// If counter-party still has no leftover, remove it from orderIndex
-			ob.removeOrderIndex(bestNode.Order.ID)
+			// If counter-party has no leftover, remove it from orderIndex
+			_, err := ob.removeOrderIndex(bestNode.Order.ID)
+			if err != nil {
+				log.Errorf("[OrderBook] takeLimitOrder critical error, failed to remove orderIdx ID:[%s]", bestNode.Order.ID)
+			}
 		}
 	}
 
@@ -313,20 +321,131 @@ func (ob *OrderBook) takeLimitOrder(order *model.Order) ([]Trade, error) {
 	return trades, nil
 }
 
-func (ob *OrderBook) takeMarketOrder(order *model.Order) ([]Trade, error) {
+// Market Order Logic Section >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+func (ob *OrderBook) takeMarketAskOrder(order *model.Order) (trades []Trade, err error) {
 	opposite := ob.oppositeSide(order.Side)
-
 	if opposite.totalVolume < order.RemainingSize {
-		return nil, errors.New("not enough volume")
-	}
-	if order.Side == model.BID {
-		order.Price = math.MaxFloat64
-	} else {
-		order.Price = -1
+		log.Warnf("[OrderBook] takeMarketAskOrder failed, no enough volume sit in [%s] market", ob.market.Name)
+		return nil, errors.New("not enough volume for market ask order")
 	}
 
-	return ob.takeLimitOrder(order)
+	remainingQty := order.RemainingSize
+
+	// loop until order fulfilled or break by stop limit
+	for remainingQty > 0 {
+		bestNode, err := opposite.PopBest()
+		if err != nil {
+			log.Errorf("[OrderBook] takeMarketAskOrder critical error, "+
+				"not enough volume for market order while matching order: [%s]", order.ID)
+			break
+		}
+
+		oppositeOrder := bestNode.Order
+
+		// Determine trade qty
+		tradeQty := remainingQty
+		if oppositeOrder.RemainingSize < remainingQty {
+			tradeQty = oppositeOrder.RemainingSize
+		}
+
+		bidOrderId, bidUserId, askOrderId, askUserId := determineOrderId(order, bestNode.Order)
+
+		// Record trade
+		trade := Trade{
+			BidOrderID: bidOrderId,
+			AskOrderID: askOrderId,
+			BidUserID:  bidUserId,
+			AskUserID:  askUserId,
+			Price:      oppositeOrder.Price,
+			Size:       tradeQty,
+			Timestamp:  time.Now(),
+		}
+		trades = append(trades, trade)
+
+		// Update qty
+		oppositeOrder.RemainingSize -= tradeQty
+		remainingQty -= tradeQty
+
+		// If counter-party still has leftover, put it back into book side (price level head)
+		if oppositeOrder.RemainingSize > 0 {
+			opposite.PutToHead(oppositeOrder.Price, bestNode)
+		} else {
+			// If counter-party has no leftover, remove it from orderIndex
+			_, err := ob.removeOrderIndex(oppositeOrder.ID)
+			if err != nil {
+				log.Errorf("[OrderBook] takeMarketAskOrder critical error, failed to remove orderIdx ID:[%s]", oppositeOrder.ID)
+			}
+		}
+	}
+
+	return trades, err
 }
+
+func (ob *OrderBook) takeMarketBidOrder(order *model.Order) (trades []Trade, err error) {
+	opposite := ob.oppositeSide(order.Side)
+	if opposite.totalQuoteAmount < order.QuoteAmount {
+		log.Warnf("[OrderBook] takeMarketBidOrder failed, no enough volume sit in [%s] market", ob.market.Name)
+		return nil, errors.New("not enough volume for market bid order")
+	}
+
+	remainingQuoteAmt := order.QuoteAmount
+
+	// Consume all remainingQuoteAmt
+	for remainingQuoteAmt > 0 {
+		bestNode, err := opposite.PopBest()
+		if err != nil {
+			log.Errorf("[OrderBook] takeMarketOrder critical error, "+
+				"not enough volume for market order while matching order: [%s]", order.ID)
+			break
+		}
+
+		oppositeOrder := bestNode.Order
+		oppositeOrderQuoteAmt := oppositeOrder.RemainingSize * oppositeOrder.Price
+
+		// Determine trade qty
+		tradeQty := 0.0
+		if remainingQuoteAmt >= oppositeOrderQuoteAmt {
+			// eat all oppositeOrder qty
+			tradeQty = oppositeOrder.RemainingSize
+		} else {
+			tradeQty = remainingQuoteAmt / oppositeOrder.Price
+		}
+
+		bidOrderId, bidUserId, askOrderId, askUserId := determineOrderId(order, bestNode.Order)
+
+		// Record trade
+		trade := Trade{
+			BidOrderID: bidOrderId,
+			AskOrderID: askOrderId,
+			BidUserID:  bidUserId,
+			AskUserID:  askUserId,
+			Price:      oppositeOrder.Price,
+			Size:       tradeQty,
+			Timestamp:  time.Now(),
+		}
+		trades = append(trades, trade)
+
+		// Update qty
+		oppositeOrder.RemainingSize -= tradeQty
+		remainingQuoteAmt -= tradeQty * oppositeOrder.Price
+		order.OriginalSize += tradeQty // increase eaten order's OriginalSize
+
+		// If counter-party still has leftover, put it back into book side (price level head)
+		if oppositeOrder.RemainingSize > 0 {
+			opposite.PutToHead(oppositeOrder.Price, bestNode)
+		} else {
+			// If counter-party has no leftover, remove it from orderIndex
+			_, err := ob.removeOrderIndex(oppositeOrder.ID)
+			if err != nil {
+				log.Errorf("[OrderBook] takeMarketBidOrder critical error, failed to remove orderIdx ID:[%s]", oppositeOrder.ID)
+			}
+		}
+	}
+
+	return trades, err
+}
+
+// Market Order Logic Section <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 // determineOrderId return (bidOrderId, bidUserId, askOrderId, askUserId)
 func determineOrderId(order, oppositeOrder *model.Order) (string, string, string, string) {

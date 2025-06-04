@@ -227,16 +227,19 @@ func TestOrderBook_MarketOrder(t *testing.T) {
 	assertNoError(t, err_2)
 
 	// Insufficient market buy order
-	_, err := ob.PlaceOrder(MARKET, model.NewOrder("T1", "u", model.BID, 0, 10, 0, model.TAKER))
+	_, err := ob.PlaceOrder(MARKET, model.NewOrder("T1", "u", model.BID, 0, 0, 1000000, model.TAKER))
 	if err == nil {
 		t.Fatalf("expected error for insufficient volume, got nil")
 	}
 
 	// Sufficient market buy order
-	trades, err := ob.PlaceOrder(MARKET, model.NewOrder("T2", "u", model.BID, 0, 5, 0, model.TAKER))
+	trades, err := ob.PlaceOrder(MARKET, model.NewOrder("T2", "u", model.BID, 0, 0, 500.0, model.TAKER))
 	assertNoError(t, err)
 	// Should generate exactly 2 trades
 	assert(t, 2, len(trades))
-	// All asks consumed
-	assert(t, 0.0, ob.TotalAskVolume())
+
+	fmt.Println("[trades-1]: ", trades[0])
+	fmt.Println("[trades-2]: ", trades[1])
+
+	assert(t, ob.TotalAskVolume(), 0.02970297029702973)
 }

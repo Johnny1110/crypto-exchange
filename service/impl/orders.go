@@ -153,7 +153,7 @@ func (s *orderService) placingLimitOrder(ctx context.Context, market, userID str
 	err = WithTx(ctx, s.db, func(tx *sql.Tx) error {
 		for _, ou := range orderUpdates {
 			// decreasing order remainingSize and update quoteAmt, avgDealtAmt
-			err = s.orderRepo.SyncTradeMatchingResult(ctx, tx, ou.OrderID, ou.RemainingSizeDecreasing, ou.DealtQuoteAmount)
+			err = s.orderRepo.SyncTradeMatchingResult(ctx, tx, ou.OrderID, ou.RemainingSizeDecreasing, ou.DealtQuoteAmountIncreasing)
 			if err != nil {
 				log.Errorf("[placingLimitOrder] SyncTradeMatchingResult err: %v", err)
 				return err
@@ -200,14 +200,14 @@ func (s *orderService) placingMarketOrder(ctx context.Context, market, userID st
 		// 1. Freeze funds based on market and side.
 		err = s.balanceRepo.LockedByUserIdAndAsset(ctx, tx, userID, freezeAsset, freezeAmt)
 		if err != nil {
-			log.Warnf("[placingLimitOrder] BalanceRepo.LockedByUserIdAndAsset err: %v", err)
+			log.Warnf("[placingMarketOrder] BalanceRepo.LockedByUserIdAndAsset err: %v", err)
 			return err
 		}
 
 		// 2. Save new orderDto into DB.
 		err = s.orderRepo.Insert(ctx, tx, orderDto)
 		if err != nil {
-			log.Errorf("[placingLimitOrder] OrderRepo.Insert err: %v", err)
+			log.Errorf("[placingMarketOrder] OrderRepo.Insert err: %v", err)
 			return err
 		}
 
@@ -215,32 +215,74 @@ func (s *orderService) placingMarketOrder(ctx context.Context, market, userID st
 		engineOrder := serviceHelper.NewEngineOrderByOrderDto(orderDto)
 		trades, err = s.engine.PlaceOrder(market, req.OrderType, engineOrder)
 		if err != nil {
-			log.Errorf("[placingLimitOrder] engine.PlaceOrder err: %v", err)
+			log.Errorf("[placingMarketOrder] engine.PlaceOrder err: %v", err)
 			return err
 		}
 
 		// 4. Save all matching trade details
 		err = s.tradeRepo.BatchInsert(ctx, tx, trades)
 		if err != nil {
-			log.Errorf("[placingLimitOrder] tradeRepo.BatchInsert err: %v", err)
+			log.Errorf("[placingMarketOrderplacingMarketOrder] tradeRepo.BatchInsert err: %v", err)
 			return err
 		}
 
-		// 5. Market Order need update: order.OriginalSize, order.AvgDealtPrice
-		// order.OriginalSize = totalDealtSize
-		// order.AvgDealtPrice = req.QuoteAmount / totalDealtSize
-		// TODO tidyUp Market Order Trades.
-
+		// 5. MarketBidOrder need update: order.OriginalSize, because we can only know how much qty has been trade by MarketBidOrder.
+		if engineOrder.Side == model.BID {
+			err = s.orderRepo.UpdateOriginalSize(ctx, tx, engineOrder.ID, engineOrder.OriginalSize)
+			orderDto.OriginalSize = engineOrder.OriginalSize
+			if err != nil {
+				log.Errorf("[placingMarketOrder] orderRepo.UpdateOriginalSize err: %v", err)
+				return err
+			}
+		}
 		return err
 	})
 
 	// IF Txn-1 Got Error:
 	if err != nil {
-		log.Errorf("[placingLimitOrder] PlaceOrder Txn-1 process has err: %v", err)
+		log.Errorf("[placingMarketOrder] PlaceOrder Txn-1 process has err: %v", err)
 		return nil, trades, err
 	}
 
-	return nil, nil, errors.New("not implemented")
+	// Collect trades data to updateOrderDataList and settlementList
+	orderUpdates, userSettlements, err := serviceHelper.TidyUpMarketTradesData(baseAsset, quoteAsset, freezeAsset, freezeAmt, orderDto, trades)
+	if err != nil {
+		log.Errorf("[placingMarketOrder] TidyUpTradesData err: %v", err)
+		return nil, trades, err
+	}
+
+	// Txn-2: handle matching trades flow and update orders.
+	err = WithTx(ctx, s.db, func(tx *sql.Tx) error {
+		for _, ou := range orderUpdates {
+			// decreasing order remainingSize and update quoteAmt, avgDealtAmt
+			err = s.orderRepo.SyncTradeMatchingResult(ctx, tx, ou.OrderID, ou.RemainingSizeDecreasing, ou.DealtQuoteAmountIncreasing)
+			if err != nil {
+				log.Errorf("[placingMarketOrder] SyncTradeMatchingResult err: %v", err)
+				return err
+			}
+		}
+
+		for userId, us := range userSettlements {
+			err = s.balanceRepo.UpdateAsset(ctx, tx, userId, baseAsset, us.BaseAssetAvailable, us.BaseAssetLocked)
+			if err != nil {
+				log.Errorf("[placingMarketOrder] Update Base Asset err: %v", err)
+				return err
+			}
+			err = s.balanceRepo.UpdateAsset(ctx, tx, userId, quoteAsset, us.QuoteAssetAvailable, us.QuoteAssetLocked)
+			if err != nil {
+				log.Errorf("[placingMarketOrder] Update Quote Asset err: %v", err)
+				return err
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		log.Errorf("[placingMarketOrder] PlaceOrder Txn-2 process has err: %v", err)
+		return nil, trades, err
+	}
+
+	return orderDto, trades, nil
 }
 
 // Core Logic (Placing 2 types of Order) <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<

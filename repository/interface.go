@@ -46,6 +46,7 @@ type IOrderRepository interface {
 	GetOrdersByUserIdAndStatuses(ctx context.Context, db DBExecutor, id string, statuses []model.OrderStatus) ([]*dto.Order, error)
 	SyncTradeMatchingResult(ctx context.Context, db DBExecutor, orderId string, decreasingSize, dealtQuoteAmount float64) error
 	CancelOrder(ctx context.Context, db DBExecutor, orderId string, remainingSize float64) error
+	UpdateOriginalSize(ctx context.Context, db DBExecutor, orderId string, originalSize float64) error
 }
 
 type ITradeRepository interface {

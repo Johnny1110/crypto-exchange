@@ -287,3 +287,30 @@ func (o orderRepository) CancelOrder(ctx context.Context, db repository.DBExecut
 
 	return nil
 }
+
+func (o orderRepository) UpdateOriginalSize(ctx context.Context, db repository.DBExecutor, orderId string, originalSize float64) error {
+	query := `UPDATE orders SET 
+		original_size = ?, updated_at = ?
+		WHERE id = ?`
+
+	result, err := db.ExecContext(ctx, query,
+		originalSize,
+		time.Now(),
+		orderId,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to update order original size: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("order with id %s not found", orderId)
+	}
+
+	return nil
+}

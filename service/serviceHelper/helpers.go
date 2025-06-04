@@ -59,15 +59,23 @@ func NewLimitOrderDtoByOrderReq(market, userID string, req *dto.OrderReq) *dto.O
 }
 
 func NewMarketOrderDtoByOrderReq(market, userID string, req *dto.OrderReq) *dto.Order {
+	size := 0.0
+	quoteAmt := 0.0
+	if req.Side == model.BID {
+		quoteAmt = req.QuoteAmount
+	} else {
+		size = req.Size
+	}
+
 	return &dto.Order{
 		ID:            uuid.NewString(),
 		UserID:        userID,
 		Market:        market,
 		Side:          req.Side,
 		Price:         -1,
-		OriginalSize:  0,
-		RemainingSize: 0,
-		QuoteAmount:   req.QuoteAmount,
+		OriginalSize:  size,
+		RemainingSize: size,
+		QuoteAmount:   quoteAmt,
 		AvgDealtPrice: 0.0,
 		Type:          book.MARKET,
 		Mode:          model.TAKER,
@@ -89,9 +97,9 @@ func NewEngineOrderByOrderDto(orderDto *dto.Order) *model.Order {
 }
 
 type DealtOrderUpdateData struct {
-	OrderID                 string
-	RemainingSizeDecreasing float64
-	DealtQuoteAmount        float64 // dealt amt (quote)
+	OrderID                    string
+	RemainingSizeDecreasing    float64
+	DealtQuoteAmountIncreasing float64 // dealt amt (quote)
 }
 
 type DealtOrderSettlementData struct {
@@ -160,14 +168,84 @@ func TidyUpLimitTradesData(baseAsset, quoteAsset string, freezeAsset string, fre
 
 		// 3. collect opposite order update info
 		if eatenOrder.Side == model.BID {
-			orderUpdates = append(orderUpdates, &DealtOrderUpdateData{OrderID: askOrderId, RemainingSizeDecreasing: tradeSize, DealtQuoteAmount: actualDealtQuoteAmt})
+			orderUpdates = append(orderUpdates, &DealtOrderUpdateData{OrderID: askOrderId, RemainingSizeDecreasing: tradeSize, DealtQuoteAmountIncreasing: actualDealtQuoteAmt})
 		} else {
-			orderUpdates = append(orderUpdates, &DealtOrderUpdateData{OrderID: bidOrderId, RemainingSizeDecreasing: tradeSize, DealtQuoteAmount: actualDealtQuoteAmt})
+			orderUpdates = append(orderUpdates, &DealtOrderUpdateData{OrderID: bidOrderId, RemainingSizeDecreasing: tradeSize, DealtQuoteAmountIncreasing: actualDealtQuoteAmt})
 		}
 	}
 
 	// Add eaten order as last one.
-	orderUpdates = append(orderUpdates, &DealtOrderUpdateData{OrderID: eatenOrder.ID, RemainingSizeDecreasing: totalDealtSize, DealtQuoteAmount: totalDealtAmt})
+	orderUpdates = append(orderUpdates, &DealtOrderUpdateData{OrderID: eatenOrder.ID, RemainingSizeDecreasing: totalDealtSize, DealtQuoteAmountIncreasing: totalDealtAmt})
+	// update eatenOrder
+	eatenOrder.AvgDealtPrice = totalDealtAmt / totalDealtSize
+	eatenOrder.QuoteAmount = totalDealtAmt
+
+	return orderUpdates, userSettlements, nil
+}
+
+func TidyUpMarketTradesData(baseAsset, quoteAsset string, freezeAsset string, freezeAmt float64, eatenOrder *dto.Order, trades []book.Trade) ([]*DealtOrderUpdateData, map[string]*DealtOrderSettlementData, error) {
+	// count of eaten order + matching orders = len(trades)+1
+	orderUpdates := make([]*DealtOrderUpdateData, 0, len(trades)+1)
+	// uid: DealtOrderSettlementData
+	userSettlements := make(map[string]*DealtOrderSettlementData)
+
+	userIds := make(map[string]bool)
+	for _, trade := range trades {
+		userIds[trade.BidUserID] = true
+		userIds[trade.AskUserID] = true
+	}
+	for uid := range userIds {
+		userSettlements[uid] = &DealtOrderSettlementData{}
+	}
+
+	totalDealtAmt := 0.0
+	totalDealtSize := 0.0
+
+	// loop trades
+	for _, trade := range trades {
+		bidUid := trade.BidUserID
+		askUid := trade.AskUserID
+		bidOrderId := trade.BidOrderID
+		askOrderId := trade.AskOrderID
+		tradePrice := trade.Price
+		tradeSize := trade.Size
+
+		// actual dealt Trade Quote Amt
+		actualDealtQuoteAmt := tradePrice * tradeSize
+		totalDealtAmt += actualDealtQuoteAmt
+		totalDealtSize += tradeSize
+
+		askUserSettlementData, _ := userSettlements[askUid]
+		bidUserSettlementData, _ := userSettlements[bidUid]
+
+		// 1-1. Process bid user locked quote balance.
+		bidUserSettlementData.QuoteAssetLocked -= actualDealtQuoteAmt
+
+		// 1-2. Process bid user available base balance.
+		bidUserSettlementData.BaseAssetAvailable += tradeSize
+
+		// 2-1. Process ask user locked base balance.
+		askUserSettlementData.BaseAssetLocked -= tradeSize
+
+		// 2-2. Process ask user available quote balance.
+		askUserSettlementData.QuoteAssetAvailable += tradePrice * tradeSize
+
+		// 3. collect opposite order update info
+		if eatenOrder.Side == model.BID {
+			orderUpdates = append(orderUpdates, &DealtOrderUpdateData{OrderID: askOrderId, RemainingSizeDecreasing: tradeSize, DealtQuoteAmountIncreasing: actualDealtQuoteAmt})
+		} else {
+			orderUpdates = append(orderUpdates, &DealtOrderUpdateData{OrderID: bidOrderId, RemainingSizeDecreasing: tradeSize, DealtQuoteAmountIncreasing: actualDealtQuoteAmt})
+		}
+	}
+
+	// Add eaten order as last one.
+	if eatenOrder.Side == model.BID {
+		// Why set RemainingSizeDecreasing & DealtQuoteAmountIncreasing to 0 ? Because market bid order data already update in previous step, just need put it into collection.
+		orderUpdates = append(orderUpdates, &DealtOrderUpdateData{OrderID: eatenOrder.ID, RemainingSizeDecreasing: 0.0, DealtQuoteAmountIncreasing: 0.0})
+	} else {
+		orderUpdates = append(orderUpdates, &DealtOrderUpdateData{OrderID: eatenOrder.ID, RemainingSizeDecreasing: totalDealtSize, DealtQuoteAmountIncreasing: totalDealtAmt})
+	}
+
 	// update eatenOrder
 	eatenOrder.AvgDealtPrice = totalDealtAmt / totalDealtSize
 	eatenOrder.QuoteAmount = totalDealtAmt
