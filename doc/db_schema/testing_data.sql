@@ -4,7 +4,7 @@ update balances set available = 0, locked = 0 where TRUE;
 
 -- Create Testing Maker Account
 INSERT INTO users(id,username,password_hash,vip_level,maker_fee, taker_fee)
-values ('1', 'market_maker', '$2a$10$z.kl4/Zazgme18gFCqwozOk5WoqMbhqAeZk5.zk55gwVgurQCwqpq', 7, 0.0, 0.0002);
+values ('1', 'market_maker', '$2a$10$z.kl4/Zazgme18gFCqwozOk5WoqMbhqAeZk5.zk55gwVgurQCwqpq', 7, 0.0001, 0.002);
 
 -- Create Testing User Account
 INSERT INTO users(id,username,password_hash,vip_level,maker_fee, taker_fee)

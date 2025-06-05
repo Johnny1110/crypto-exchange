@@ -2,7 +2,9 @@ package dto
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/google/uuid"
+	"github.com/johnny1110/crypto-exchange/engine-v2/book"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
 	"time"
 )
@@ -20,6 +22,9 @@ type Order struct {
 	Type          model.OrderType   `json:"type"`
 	Mode          model.Mode        `json:"mode"`
 	Status        model.OrderStatus `json:"status"`
+	FeeRate       float64           `json:"-"`
+	Fees          float64           `json:"fees"`
+	FeeAsset      string            `json:"feeAsset"`
 	CreatedAt     time.Time         `json:"-"`
 	UpdatedAt     time.Time         `json:"-"`
 }
@@ -31,10 +36,12 @@ func (o Order) MarshalJSON() ([]byte, error) {
 	result := struct {
 		*Alias
 		Price     *float64 `json:"price,omitempty"`
+		FeeRate   string   `json:"fee_rate"`
 		CreatedAt int64    `json:"created_at"`
 		UpdatedAt int64    `json:"updated_at"`
 	}{
 		Alias:     (*Alias)(&o),
+		FeeRate:   fmt.Sprintf("%.4f%%", o.FeeRate*100), // properly format percentage
 		CreatedAt: o.CreatedAt.UnixMilli(),
 		UpdatedAt: o.UpdatedAt.UnixMilli(),
 	}
@@ -104,7 +111,39 @@ func (b *OrderBuilder) WithQuoteAmount(amount float64) *OrderBuilder {
 	return b
 }
 
+func (b *OrderBuilder) WithFeeRate(feeRate float64, feeAsset string) *OrderBuilder {
+	b.order.FeeRate = feeRate
+	b.order.FeeAsset = feeAsset
+	return b
+}
+
 func (b *OrderBuilder) Build() *Order {
 	b.order.Status = model.ORDER_STATUS_NEW
 	return b.order
+}
+
+// PlaceOrderContext encapsulates all order placement context
+type PlaceOrderContext struct {
+	Market   string
+	UserID   string
+	Request  *OrderReq
+	FeeRate  float64
+	FeeAsset string
+	OrderDTO *Order
+	Assets   *AssetDetails
+	Trades   []book.Trade
+}
+
+func (c *PlaceOrderContext) SyncTradeResult(engineOrder *model.Order, trades []book.Trade) {
+	c.OrderDTO.RemainingSize = engineOrder.RemainingSize
+	c.OrderDTO.Status = engineOrder.GetStatus()
+	c.Trades = trades
+}
+
+// AssetDetails holds asset-related information
+type AssetDetails struct {
+	BaseAsset   string
+	QuoteAsset  string
+	FreezeAsset string
+	FreezeAmt   float64
 }

@@ -24,7 +24,7 @@ type IBalanceService interface {
 }
 
 type IOrderService interface {
-	PlaceOrder(ctx context.Context, market, userID string, req *dto.OrderReq) (*dto.PlaceOrderResult, error)
+	PlaceOrder(ctx context.Context, market string, user *dto.User, req *dto.OrderReq) (*dto.PlaceOrderResult, error)
 	QueryOrder(ctx context.Context, userId string, isOpenOrder bool) ([]*dto.Order, error)
 	CancelOrder(ctx context.Context, market, userID, orderID string) (*dto.Order, error)
 }

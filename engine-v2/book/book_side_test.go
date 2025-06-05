@@ -21,22 +21,22 @@ func MockBookSide() (*BookSide, *BookSide) {
 	userId := "U_01"
 
 	// create bid
-	bidOrderNode_1 := model.NewOrderNode("1", userId, model.BID, 1000, 10, 0, model.MAKER)
-	bidOrderNode_2 := model.NewOrderNode("2", userId, model.BID, 1000, 15, 0, model.MAKER)
+	bidOrderNode_1 := model.NewOrderNode("1", userId, model.BID, 1000, 10, 0, model.MAKER, 0)
+	bidOrderNode_2 := model.NewOrderNode("2", userId, model.BID, 1000, 15, 0, model.MAKER, 0)
 	bidSide.AddOrderNode(1000, bidOrderNode_1)
 	bidSide.AddOrderNode(1000, bidOrderNode_2)
-	bidOrderNode_3 := model.NewOrderNode("3", userId, model.BID, 1200, 3, 0, model.MAKER)
+	bidOrderNode_3 := model.NewOrderNode("3", userId, model.BID, 1200, 3, 0, model.MAKER, 0)
 	bidSide.AddOrderNode(1200, bidOrderNode_3)
-	bidOrderNode_4 := model.NewOrderNode("3", userId, model.BID, 1300, 2, 0, model.MAKER)
+	bidOrderNode_4 := model.NewOrderNode("3", userId, model.BID, 1300, 2, 0, model.MAKER, 0)
 	bidSide.AddOrderNode(1300, bidOrderNode_4)
 
-	askOrderNode_1 := model.NewOrderNode("1", userId, model.BID, 1400, 10, 0, model.MAKER)
-	askOrderNode_2 := model.NewOrderNode("2", userId, model.BID, 1400, 15, 0, model.MAKER)
+	askOrderNode_1 := model.NewOrderNode("1", userId, model.BID, 1400, 10, 0, model.MAKER, 0)
+	askOrderNode_2 := model.NewOrderNode("2", userId, model.BID, 1400, 15, 0, model.MAKER, 0)
 	askSide.AddOrderNode(1400, askOrderNode_1)
 	askSide.AddOrderNode(1400, askOrderNode_2)
-	askOrderNode_3 := model.NewOrderNode("3", userId, model.BID, 1500, 3, 0, model.MAKER)
+	askOrderNode_3 := model.NewOrderNode("3", userId, model.BID, 1500, 3, 0, model.MAKER, 0)
 	askSide.AddOrderNode(1500, askOrderNode_3)
-	askOrderNode_4 := model.NewOrderNode("3", userId, model.BID, 1550, 2, 0, model.MAKER)
+	askOrderNode_4 := model.NewOrderNode("3", userId, model.BID, 1550, 2, 0, model.MAKER, 0)
 	askSide.AddOrderNode(1550, askOrderNode_4)
 
 	return bidSide, askSide
@@ -50,7 +50,7 @@ func TestAddOrderNode(t *testing.T) {
 
 func TestAddThenRemoveOrderNode(t *testing.T) {
 	bidSide, _ := MockBookSide()
-	askOrderNode_1 := model.NewOrderNode("777", "1", model.BID, 1400, 5, 0, model.MAKER)
+	askOrderNode_1 := model.NewOrderNode("777", "1", model.BID, 1400, 5, 0, model.MAKER, 0)
 	bidSide.AddOrderNode(1400, askOrderNode_1)
 
 	fmt.Println(bidSide.Len())

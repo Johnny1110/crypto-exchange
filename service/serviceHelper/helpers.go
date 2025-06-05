@@ -57,31 +57,33 @@ func calculateBidFreezeValue(req *dto.OrderReq, quoteAsset string) (string, floa
 	}
 }
 
-func NewLimitOrderDtoByOrderReq(market, userID string, req *dto.OrderReq) *dto.Order {
+func NewLimitOrderDtoByOrderCtx(orderCtx *dto.PlaceOrderContext) *dto.Order {
 	return dto.NewOrderBuilder().
-		WithMarket(market).
-		WithUser(userID).
-		WithSide(req.Side).
+		WithMarket(orderCtx.Market).
+		WithUser(orderCtx.UserID).
+		WithSide(orderCtx.Request.Side).
 		WithType(model.LIMIT).
-		WithMode(req.Mode).
-		WithPrice(req.Price).
-		WithSize(req.Size).
+		WithMode(orderCtx.Request.Mode).
+		WithPrice(orderCtx.Request.Price).
+		WithSize(orderCtx.Request.Size).
+		WithFeeRate(orderCtx.FeeRate, orderCtx.FeeAsset).
 		Build()
 }
 
-func NewMarketOrderDtoByOrderReq(market, userID string, req *dto.OrderReq) *dto.Order {
+func NewMarketOrderDtoByOrderReq(orderCtx *dto.PlaceOrderContext) *dto.Order {
 	builder := dto.NewOrderBuilder().
-		WithMarket(market).
-		WithUser(userID).
-		WithSide(req.Side).
+		WithMarket(orderCtx.Market).
+		WithUser(orderCtx.UserID).
+		WithSide(orderCtx.Request.Side).
 		WithType(model.MARKET).
 		WithMode(model.TAKER).
+		WithFeeRate(orderCtx.FeeRate, orderCtx.FeeAsset).
 		WithPrice(-1) // Market orders don't have a specific price
 
-	if req.Side == model.BID {
-		builder.WithQuoteAmount(req.QuoteAmount)
+	if orderCtx.Request.Side == model.BID {
+		builder.WithQuoteAmount(orderCtx.Request.QuoteAmount)
 	} else {
-		builder.WithSize(req.Size)
+		builder.WithSize(orderCtx.Request.Size)
 	}
 
 	return builder.Build()
@@ -100,6 +102,7 @@ func NewEngineOrderByOrderDto(orderDto *dto.Order) *model.Order {
 		orderDto.RemainingSize,
 		orderDto.QuoteAmount,
 		orderDto.Mode,
+		orderDto.FeeRate,
 	)
 }
 
@@ -142,4 +145,29 @@ func WrapPlaceOrderResult(orderDto *dto.Order, trades []book.Trade) *dto.PlaceOr
 		Order:   *orderDto,
 		Matches: matches,
 	}
+}
+
+func DetermineFeeInfo(req *dto.OrderReq, user *dto.User, baseAsset string, quoteAsset string) (feeAsset string, feeRate float64) {
+	switch req.Mode {
+	case model.MAKER:
+		feeRate = user.MakerFee
+		break
+	case model.TAKER:
+		feeRate = user.TakerFee
+		break
+	default:
+		panic("Unknown order mode")
+	}
+
+	switch req.Side {
+	case model.BID:
+		feeAsset = baseAsset
+		break
+	case model.ASK:
+		feeAsset = quoteAsset
+		break
+	default:
+		panic("Unknown order side")
+	}
+	return feeAsset, feeRate
 }

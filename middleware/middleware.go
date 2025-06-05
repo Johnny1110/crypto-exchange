@@ -72,6 +72,7 @@ func AuthMiddleware(credentialCache *security.CredentialCache) gin.HandlerFunc {
 		}
 
 		// store user info and token into context
+		c.Set("user", user)
 		c.Set("userId", user.ID)
 		c.Set("username", user.Username)
 		c.Set("token", token)

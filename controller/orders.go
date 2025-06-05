@@ -19,10 +19,10 @@ func NewOrderController(orderService service.IOrderService) *OrderController {
 }
 
 func (c OrderController) PlaceOrder(context *gin.Context) {
-	userID := context.MustGet("userId").(string)
+	user := context.MustGet("user").(*dto.User)
 	market := context.Param("market") // router is /:market/order
 
-	if userID == "" || market == "" {
+	if user == nil || market == "" {
 		context.JSON(http.StatusBadRequest, HandleInvalidInput())
 		return
 	}
@@ -33,9 +33,9 @@ func (c OrderController) PlaceOrder(context *gin.Context) {
 		return
 	}
 
-	log.Infof("[OrderContrller] Placing order: market:[%s], userID:[%s], req: %v", market, userID, req)
+	log.Infof("[OrderContrller] Placing order: market:[%s], user:[%s], req: %v", market, user.Username, req)
 
-	result, err := c.orderService.PlaceOrder(context.Request.Context(), market, userID, &req)
+	result, err := c.orderService.PlaceOrder(context.Request.Context(), market, user, &req)
 	if err != nil {
 		context.JSON(http.StatusBadRequest, HandleCodeError(PLACE_ORDER_ERROR, err))
 		return

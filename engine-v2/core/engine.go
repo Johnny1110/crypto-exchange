@@ -55,8 +55,8 @@ func (e *MatchingEngine) PlaceOrder(market string, orderType model.OrderType, or
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("[Engine] PlaceOrder, market: [%s], type:[%v], mode:[%v], side:[%v] orderId:[%s], prize:[%v], size:[%v], quoteAmt:[%v]",
-		market, orderType, order.Mode, order.Side, order.ID, order.Price, order.RemainingSize, order.QuoteAmount)
+	log.Infof("[Engine] PlaceOrder, market: [%s], type:[%v], mode:[%v], side:[%v] orderId:[%s], prize:[%v], size:[%v], quoteAmt:[%v], feeRate:[%.4f]%",
+		market, orderType, order.Mode, order.Side, order.ID, order.Price, order.RemainingSize, order.QuoteAmount, order.FeeRate*100)
 
 	return ob.PlaceOrder(orderType, order)
 }
