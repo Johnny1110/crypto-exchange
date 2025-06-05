@@ -24,7 +24,7 @@ type Order struct {
 	Status        model.OrderStatus `json:"status"`
 	FeeRate       float64           `json:"-"`
 	Fees          float64           `json:"fees"`
-	FeeAsset      string            `json:"feeAsset"`
+	FeeAsset      string            `json:"fee_asset"`
 	CreatedAt     time.Time         `json:"-"`
 	UpdatedAt     time.Time         `json:"-"`
 }
@@ -52,6 +52,20 @@ func (o Order) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(result)
+}
+
+func (o Order) ToEngineOrder() *model.Order {
+	return &model.Order{
+		ID:            o.ID,
+		UserID:        o.UserID,
+		Side:          o.Side,
+		Price:         o.Price,
+		OriginalSize:  o.OriginalSize,
+		RemainingSize: o.RemainingSize,
+		Mode:          o.Mode,
+		FeeRate:       o.FeeRate,
+		Timestamp:     o.CreatedAt,
+	}
 }
 
 // OrderBuilder provides a fluent interface for building orders

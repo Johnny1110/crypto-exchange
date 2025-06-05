@@ -21,6 +21,7 @@ var (
 
 // Trade (Match) represents a filled trade between two orders.
 type Trade struct {
+	Market     string
 	BidOrderID string
 	AskOrderID string
 	BidUserID  string
@@ -35,9 +36,9 @@ type Trade struct {
 
 func (t Trade) String() string {
 	return fmt.Sprintf(
-		"Trade{BidOrderID: %q, AskOrderID: %q, Price: %.8f, Size: %.8f, Value: %.8f, "+
+		"Trade{Market: %q, BidOrderID: %q, AskOrderID: %q, Price: %.8f, Size: %.8f, Value: %.8f, "+
 			"BidFee: %.4f%%, AskFee: %.4f%%, Timestamp: %s}",
-		t.BidOrderID, t.AskOrderID, t.Price, t.Size, t.TradeValue,
+		t.Market, t.BidOrderID, t.AskOrderID, t.Price, t.Size, t.TradeValue,
 		t.BidFeeRate*100, t.AskFeeRate*100, t.Timestamp.Format(time.RFC3339),
 	)
 }
@@ -68,10 +69,10 @@ func NewPriceVolumePair(price float64, volume float64) *PriceVolumePair {
 // BookSnapshot holds the top 20 bid and ask levels
 type BookSnapshot struct {
 	// key: priceLevel value: volume
-	BidSide     []*PriceVolumePair
-	AskSide     []*PriceVolumePair
-	LatestPrice float64
-	Timestamp   time.Time
+	BidSide     []*PriceVolumePair `json:"bid_side"`
+	AskSide     []*PriceVolumePair `json:"ask_side"`
+	LatestPrice float64            `json:"latest_price"`
+	Timestamp   time.Time          `json:"-"`
 }
 
 func NewBookSnapshot() *BookSnapshot {
@@ -559,6 +560,7 @@ func (ob *OrderBook) createTrade(order1, order2 *model.Order, price, size float6
 	bidOrder, askOrder := ob.determineTradeOrders(order1, order2)
 
 	return Trade{
+		Market:     ob.market.Name,
 		BidOrderID: bidOrder.ID,
 		AskOrderID: askOrder.ID,
 		BidUserID:  bidOrder.UserID,
@@ -577,4 +579,23 @@ func (ob *OrderBook) determineTradeOrders(order1, order2 *model.Order) (bidOrder
 		return order1, order2
 	}
 	return order2, order1
+}
+
+// PutOrder put order into OrderBook directly
+func (ob *OrderBook) PutOrder(order *model.Order) error {
+	ob.obMu.Lock()
+	defer ob.obMu.Unlock()
+
+	err := ob.makeLimitOrder(order)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (ob *OrderBook) UpdateLatestPrice(price float64) {
+	ob.obMu.Lock()
+	defer ob.obMu.Unlock()
+
+	ob.latestPrice = price
 }

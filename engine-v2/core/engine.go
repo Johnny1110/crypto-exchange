@@ -97,3 +97,25 @@ func (e *MatchingEngine) StartSnapshotRefresher() {
 		}
 	}()
 }
+
+func (e *MatchingEngine) RecoverOrderBook(market string, orders []*model.Order, latestPrice float64) error {
+	if market == "" {
+		return fmt.Errorf("marketInfo is nil")
+	}
+	ob, err := e.GetOrderBook(market)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("[Engine] RecoverOrderBook, market: [%s], order count: %v", market, len(orders))
+	for _, order := range orders {
+		err := ob.PutOrder(order)
+		if err != nil {
+			log.Errorf("[Engine] RecoverOrderBook failed to record orderId: [%s], error:%v", order.ID, err)
+			return err
+		}
+	}
+
+	ob.UpdateLatestPrice(latestPrice)
+	return nil
+}

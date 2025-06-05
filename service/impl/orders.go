@@ -309,6 +309,17 @@ func (s *orderService) QueryOrder(ctx context.Context, userID string, isOpenOrde
 	return orders, nil
 }
 
+func (s *orderService) QueryOrdersByMarketAndStatuses(ctx context.Context, market string, statuses []model.OrderStatus) ([]*dto.Order, error) {
+	if market == "" || len(statuses) == 0 {
+		return nil, ErrInvalidInput
+	}
+	orders, err := s.orderRepo.GetOrdersByMarketAndStatuses(ctx, s.db, market, statuses)
+	if err != nil {
+		return nil, err
+	}
+	return orders, nil
+}
+
 func (s *orderService) settleFeesRevenue(ctx context.Context, tx *sql.Tx, result *serviceHelper.TradeSettlementResult) error {
 
 	err := s.balanceRepo.UpdateAsset(ctx, tx, settings.MARGIN_ACCOUNT_ID, result.BaseAsset, result.TotalBaseFees, 0)
