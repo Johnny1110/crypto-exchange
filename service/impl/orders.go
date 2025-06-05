@@ -11,6 +11,7 @@ import (
 	"github.com/johnny1110/crypto-exchange/repository"
 	"github.com/johnny1110/crypto-exchange/service"
 	"github.com/johnny1110/crypto-exchange/service/serviceHelper"
+	"github.com/johnny1110/crypto-exchange/settings"
 	"github.com/labstack/gommon/log"
 )
 
@@ -19,6 +20,7 @@ var (
 	ErrOrderNotFound         = errors.New("order not found")
 	ErrOrderNotBelongsToUser = errors.New("order not belongs to user")
 	ErrInsufficientBalance   = errors.New("insufficient balance")
+	UnknownError             = errors.New("unknown error")
 )
 
 type orderService struct {
@@ -130,14 +132,16 @@ func (s *orderService) getOrderPlacementStrategy(orderType model.OrderType) (Ord
 func (s *orderService) executeOrderPlacement(ctx context.Context, orderCtx *dto.PlaceOrderContext, isMarketOrder bool) error {
 	// Phase 1: Process order placement
 	if err := s.executeOrderPlacementPhase(ctx, orderCtx, isMarketOrder); err != nil {
-		return fmt.Errorf("order placement phase failed: %w", err)
+		log.Errorf("[executeOrderPlacement] Phase-1 error: %v", err)
+		return err
 	}
 
 	log.Infof("[executeOrderPlacement] Phase-1 done: %v", orderCtx)
 
 	// Phase 2: Process trade settlement
 	if err := s.executeTradeSettlementPhase(ctx, orderCtx); err != nil {
-		return fmt.Errorf("trade settlement phase failed: %w", err)
+		log.Errorf("[executeOrderPlacement] Phase-2 error: %v", err)
+		return UnknownError
 	}
 
 	return nil
@@ -147,20 +151,22 @@ func (s *orderService) executeOrderPlacementPhase(ctx context.Context, orderCtx 
 	return WithTx(ctx, s.db, func(tx *sql.Tx) error {
 		// 1. Freeze user funds
 		if err := s.balanceRepo.LockedByUserIdAndAsset(ctx, tx, orderCtx.UserID, orderCtx.Assets.FreezeAsset, orderCtx.Assets.FreezeAmt); err != nil {
-			log.Warnf("[OrderPlacement] failed to lock user balance, %v", err)
+			log.Warnf("[executeOrderPlacementPhase] failed to lock user balance, %v", err)
 			return ErrInsufficientBalance
 		}
 
 		// 2. Insert order to database
 		if err := s.orderRepo.Insert(ctx, tx, orderCtx.OrderDTO); err != nil {
-			return fmt.Errorf("failed to insert order: %w", err)
+			log.Errorf("[executeOrderPlacementPhase] Insert Order error : %v", err)
+			return UnknownError
 		}
 
 		// 3. Place order in matching engine
 		engineOrder := serviceHelper.NewEngineOrderByOrderDto(orderCtx.OrderDTO)
 		trades, err := s.engine.PlaceOrder(orderCtx.Market, orderCtx.Request.OrderType, engineOrder)
 		if err != nil {
-			return fmt.Errorf("failed to place order in engine: %w", err)
+			log.Warnf("[executeOrderPlacementPhase] Engine warning : %v", err)
+			return err
 		}
 
 		// 4. Update order status from engine result
@@ -169,14 +175,16 @@ func (s *orderService) executeOrderPlacementPhase(ctx context.Context, orderCtx 
 		// 5. Save trade records
 		if len(orderCtx.Trades) > 0 {
 			if err := s.tradeRepo.BatchInsert(ctx, tx, trades); err != nil {
-				return fmt.Errorf("failed to insert trades: %w", err)
+				log.Errorf("[executeOrderPlacementPhase] BatchInsert Trades error : %v", err)
+				return UnknownError
 			}
 		}
 
 		// 6. Handle market bid order special case
 		if isMarketOrder && orderCtx.Request.Side == model.BID {
 			if err := s.orderRepo.UpdateOriginalSize(ctx, tx, engineOrder.ID, engineOrder.OriginalSize); err != nil {
-				return fmt.Errorf("failed to update original size: %w", err)
+				log.Errorf("[executeOrderPlacementPhase] Handle market bid order special case error : %v", err)
+				return UnknownError
 			}
 			orderCtx.OrderDTO.OriginalSize = engineOrder.OriginalSize
 		}
@@ -206,8 +214,14 @@ func (s *orderService) executeTradeSettlementPhase(ctx context.Context, orderCtx
 		// Update user balances
 		for userID, settlement := range settlementResult.UserSettlements {
 			if err := s.updateUserAssets(ctx, tx, userID, orderCtx.Assets, settlement); err != nil {
-				return fmt.Errorf("failed to update assets for user %s: %w", userID, err)
+				log.Errorf("updateUserAssets error: %v", err)
+				return err
 			}
+		}
+
+		// settle Fees Revenue to exchange's margin account
+		if err := s.settleFeesRevenue(ctx, tx, settlementResult); err != nil {
+			return err
 		}
 
 		return nil
@@ -293,6 +307,21 @@ func (s *orderService) QueryOrder(ctx context.Context, userID string, isOpenOrde
 	}
 
 	return orders, nil
+}
+
+func (s *orderService) settleFeesRevenue(ctx context.Context, tx *sql.Tx, result *serviceHelper.TradeSettlementResult) error {
+
+	err := s.balanceRepo.UpdateAsset(ctx, tx, settings.MARGIN_ACCOUNT_ID, result.BaseAsset, result.TotalBaseFees, 0)
+	if err != nil {
+		log.Errorf("[PlaceOrder] settleFeesRevenue failed, error %v", err)
+		return err
+	}
+	err = s.balanceRepo.UpdateAsset(ctx, tx, settings.MARGIN_ACCOUNT_ID, result.QuoteAsset, result.TotalQuoteFees, 0)
+	if err != nil {
+		log.Errorf("[PlaceOrder] settleFeesRevenue failed, error %v", err)
+		return err
+	}
+	return nil
 }
 
 func getOrderStatusesByOpenFlag(isOpen bool) []model.OrderStatus {
