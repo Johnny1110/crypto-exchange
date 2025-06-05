@@ -36,6 +36,9 @@ CREATE TABLE orders
     type           INTEGER NOT NULL, -- 0=LIMIT,1=MARKET
     mode           INTEGER NOT NULL, -- 0=MAKER,1=TAKER
     status         TEXT NOT NULL,    -- NEW, FILLED, CANCELED
+    fee_rate       REAL DEFAULT 0,
+    fees           REAL DEFAULT 0,
+    fee_asset      TEXT,
     created_at     DATETIME NOT NULL,
     updated_at     DATETIME NOT NULL
 );
@@ -57,6 +60,8 @@ create table trades
     bid_order_id TEXT     NOT NULL,
     price        REAL     NOT NULL,
     size         REAL     NOT NULL,
+    bid_fee_rate REAL,
+    ask_fee_rate REAL,
     timestamp    DATETIME NOT NULL
 );
 

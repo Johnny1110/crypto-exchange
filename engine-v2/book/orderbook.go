@@ -25,16 +25,20 @@ type Trade struct {
 	AskOrderID string
 	BidUserID  string
 	AskUserID  string
-	Price      float64
-	Size       float64
+	BidFeeRate float64 // Bid order fee rate
+	AskFeeRate float64 // Ask order fee rate
+	Price      float64 // price limit
+	Size       float64 // dealt qty
+	TradeValue float64 // Price * Size
 	Timestamp  time.Time
 }
 
-// String implements fmt.Stringer, returning a full snapshot of the trade.
 func (t Trade) String() string {
 	return fmt.Sprintf(
-		"Trade{BidOrderID: %q, AskOrderID: %q, Price: %.8f, Size: %.8f, Timestamp: %s}",
-		t.BidOrderID, t.AskOrderID, t.Price, t.Size, t.Timestamp.Format(time.RFC3339),
+		"Trade{BidOrderID: %q, AskOrderID: %q, Price: %.8f, Size: %.8f, Value: %.8f, "+
+			"BidFee: %.4f%%, AskFee: %.4f%%, Timestamp: %s}",
+		t.BidOrderID, t.AskOrderID, t.Price, t.Size, t.TradeValue,
+		t.BidFeeRate*100, t.AskFeeRate*100, t.Timestamp.Format(time.RFC3339),
 	)
 }
 
@@ -552,23 +556,25 @@ func (ob *OrderBook) executeMatch(order *model.Order, opposite *BookSide, bestPr
 
 // createTrade creates a trade record
 func (ob *OrderBook) createTrade(order1, order2 *model.Order, price, size float64) Trade {
-	bidOrderID, bidUserID, askOrderID, askUserID := ob.determineTradeIDs(order1, order2)
+	bidOrder, askOrder := ob.determineTradeOrders(order1, order2)
 
 	return Trade{
-		BidOrderID: bidOrderID,
-		AskOrderID: askOrderID,
-		BidUserID:  bidUserID,
-		AskUserID:  askUserID,
+		BidOrderID: bidOrder.ID,
+		AskOrderID: askOrder.ID,
+		BidUserID:  bidOrder.UserID,
+		AskUserID:  askOrder.UserID,
+		BidFeeRate: bidOrder.FeeRate,
+		AskFeeRate: askOrder.FeeRate,
 		Price:      price,
 		Size:       size,
 		Timestamp:  time.Now(),
 	}
 }
 
-// determineTradeIDs determines bid/ask order IDs and user IDs
-func (ob *OrderBook) determineTradeIDs(order1, order2 *model.Order) (bidOrder, bidUserID, askOrderID, askUserID string) {
+// determineTradeOrders determines bid/ask order IDs and user IDs
+func (ob *OrderBook) determineTradeOrders(order1, order2 *model.Order) (bidOrder *model.Order, askOrder *model.Order) {
 	if order1.Side == model.BID {
-		return order1.ID, order1.UserID, order2.ID, order2.UserID
+		return order1, order2
 	}
-	return order2.ID, order2.UserID, order1.ID, order1.UserID
+	return order2, order1
 }
