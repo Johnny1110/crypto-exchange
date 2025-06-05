@@ -15,6 +15,13 @@ import (
 	"github.com/labstack/gommon/log"
 )
 
+var (
+	ErrInvalidInput          = errors.New("invalid input")
+	ErrOrderNotFound         = errors.New("order not found")
+	ErrOrderNotBelongsToUser = errors.New("order not belongs to user")
+	ErrInsufficientBalance   = errors.New("insufficient balance")
+)
+
 type orderService struct {
 	db          *sql.DB
 	engine      *core.MatchingEngine
@@ -38,316 +45,280 @@ func NewIOrderService(
 	}
 }
 
+// PlaceOrderContext encapsulates all order placement context
+type PlaceOrderContext struct {
+	Market   string
+	UserID   string
+	Request  *dto.OrderReq
+	OrderDTO *dto.Order
+	Assets   *AssetDetails
+	Trades   []book.Trade
+}
+
+func (c *PlaceOrderContext) syncTradeResult(engineOrder *model.Order, trades []book.Trade) {
+	c.OrderDTO.RemainingSize = engineOrder.RemainingSize
+	c.OrderDTO.Status = engineOrder.GetStatus()
+	c.Trades = trades
+}
+
+// AssetDetails holds asset-related information
+type AssetDetails struct {
+	BaseAsset   string
+	QuoteAsset  string
+	FreezeAsset string
+	FreezeAmt   float64
+}
+
 func (s *orderService) PlaceOrder(ctx context.Context, market, userID string, req *dto.OrderReq) (*dto.PlaceOrderResult, error) {
-	err := validatePlacingOrderReq(userID, market, req)
+	// Initialize order context
+	orderCtx, err := s.initializeOrderContext(market, userID, req)
 	if err != nil {
-		log.Errorf("[PlaceOrder] validatePlacingOrderReq err: %v", err)
+		return nil, fmt.Errorf("failed to initialize order context: %w", err)
+	}
+
+	// Execute order placement strategy
+	strategy, err := s.getOrderPlacementStrategy(req.OrderType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get order placement strategy: %w", err)
+	}
+	if err := strategy.Execute(ctx, s, orderCtx); err != nil {
+		return nil, fmt.Errorf("failed to execute order placement: %w", err)
+	}
+
+	return serviceHelper.WrapPlaceOrderResult(orderCtx.OrderDTO, orderCtx.Trades), nil
+}
+
+func (s *orderService) initializeOrderContext(market, userID string, req *dto.OrderReq) (*PlaceOrderContext, error) {
+	if err := validatePlacingOrderReq(userID, market, req); err != nil {
 		return nil, err
 	}
 
 	baseAsset, quoteAsset, err := serviceHelper.ParseMarket(s.engine, market)
 	if err != nil {
-		log.Errorf("[PlaceOrder] ParseMarket err: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to parse market: %w", err)
 	}
+
 	freezeAsset, freezeAmt := serviceHelper.DetermineFreezeValue(req, baseAsset, quoteAsset)
 
-	assetDetails := &orderAssetDetails{
-		freezeAmount: freezeAmt,
-		baseAsset:    baseAsset,
-		quoteAsset:   quoteAsset,
-		freezeAsset:  freezeAsset,
-	}
+	return &PlaceOrderContext{
+		Market:  market,
+		UserID:  userID,
+		Request: req,
+		Assets: &AssetDetails{
+			BaseAsset:   baseAsset,
+			QuoteAsset:  quoteAsset,
+			FreezeAsset: freezeAsset,
+			FreezeAmt:   freezeAmt,
+		},
+	}, nil
+}
 
-	// call placing limit order | market order:
-	var orderDto *dto.Order
-	var trades []book.Trade
-	switch req.OrderType {
+// OrderPlacementStrategy >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+// OrderPlacementStrategy defines the interface for order placement strategies
+type OrderPlacementStrategy interface {
+	Execute(ctx context.Context, service *orderService, orderCtx *PlaceOrderContext) error
+}
+
+// LimitOrderStrategy implements limit order placement logic
+type LimitOrderStrategy struct{}
+
+func (s *LimitOrderStrategy) Execute(ctx context.Context, service *orderService, orderCtx *PlaceOrderContext) error {
+	orderCtx.OrderDTO = serviceHelper.NewLimitOrderDtoByOrderReq(orderCtx.Market, orderCtx.UserID, orderCtx.Request)
+	return service.executeOrderPlacement(ctx, orderCtx, false)
+}
+
+// MarketOrderStrategy implements market order placement logic
+type MarketOrderStrategy struct{}
+
+func (s *MarketOrderStrategy) Execute(ctx context.Context, service *orderService, orderCtx *PlaceOrderContext) error {
+	orderCtx.OrderDTO = serviceHelper.NewMarketOrderDtoByOrderReq(orderCtx.Market, orderCtx.UserID, orderCtx.Request)
+	return service.executeOrderPlacement(ctx, orderCtx, true)
+}
+
+func (s *orderService) getOrderPlacementStrategy(orderType book.OrderType) (OrderPlacementStrategy, error) {
+	switch orderType {
 	case book.LIMIT:
-		orderDto, trades, err = s.placingLimitOrder(ctx, market, userID, req, assetDetails)
-		break
+		return &LimitOrderStrategy{}, nil
 	case book.MARKET:
-		orderDto, trades, err = s.placingMarketOrder(ctx, market, userID, req, assetDetails)
-		break
+		return &MarketOrderStrategy{}, nil
+	default:
+		log.Errorf("[getOrderPlacementStrategy] failed, unknown order type: %v", orderType)
+		return nil, ErrInvalidInput
 	}
-
-	if err != nil {
-		log.Errorf("[PlaceOrder] failed to placing type order, err: %v", err)
-		return nil, err
-	}
-
-	return serviceHelper.WrapPlaceOrderResult(orderDto, trades), err
 }
 
-// Core Logic (Placing 2 types of Order) >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+// OrderPlacementStrategy <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-type orderAssetDetails struct {
-	baseAsset, quoteAsset, freezeAsset string
-	freezeAmount                       float64
+func (s *orderService) executeOrderPlacement(ctx context.Context, orderCtx *PlaceOrderContext, isMarketOrder bool) error {
+	// Phase 1: Process order placement
+	if err := s.executeOrderPlacementPhase(ctx, orderCtx, isMarketOrder); err != nil {
+		return fmt.Errorf("order placement phase failed: %w", err)
+	}
+
+	log.Infof("[executeOrderPlacement] Phase-1 done: %v", orderCtx)
+
+	// Phase 2: Process trade settlement
+	if err := s.executeTradeSettlementPhase(ctx, orderCtx); err != nil {
+		return fmt.Errorf("trade settlement phase failed: %w", err)
+	}
+
+	return nil
 }
 
-func (s *orderService) placingLimitOrder(ctx context.Context, market, userID string, req *dto.OrderReq, assetDetails *orderAssetDetails) (*dto.Order, []book.Trade, error) {
-	orderDto := serviceHelper.NewLimitOrderDtoByOrderReq(market, userID, req)
-
-	log.Infof("[placingLimitOrder] orderDto: %v", orderDto)
-
-	var err error
-	var trades []book.Trade
-
-	freezeAsset := assetDetails.freezeAsset // The Asset that will be locked by incoming order's userId
-	freezeAmt := assetDetails.freezeAmount  // The Asset's Amount that will be locked by incoming order's userId
-	baseAsset := assetDetails.baseAsset     // Market base asset (ex: ETH, BTC)
-	quoteAsset := assetDetails.quoteAsset   // Market quote asset (ex: USDT, USDC)
-
-	// Txn-1: process placing order flow.
-	err = WithTx(ctx, s.db, func(tx *sql.Tx) error {
-		// 1. Freeze funds based on market and side.
-		err = s.balanceRepo.LockedByUserIdAndAsset(ctx, tx, userID, freezeAsset, freezeAmt)
-		if err != nil {
-			log.Warnf("[placingLimitOrder] BalanceRepo.LockedByUserIdAndAsset err: %v", err)
-			return err
+func (s *orderService) executeOrderPlacementPhase(ctx context.Context, orderCtx *PlaceOrderContext, isMarketOrder bool) error {
+	return WithTx(ctx, s.db, func(tx *sql.Tx) error {
+		// 1. Freeze user funds
+		if err := s.balanceRepo.LockedByUserIdAndAsset(ctx, tx, orderCtx.UserID, orderCtx.Assets.FreezeAsset, orderCtx.Assets.FreezeAmt); err != nil {
+			log.Warnf("[OrderPlacement] failed to lock user balance, %v", err)
+			return ErrInsufficientBalance
 		}
 
-		// 2. Save new orderDto into DB.
-		err = s.orderRepo.Insert(ctx, tx, orderDto)
-		if err != nil {
-			log.Errorf("[placingLimitOrder] OrderRepo.Insert err: %v", err)
-			return err
+		// 2. Insert order to database
+		if err := s.orderRepo.Insert(ctx, tx, orderCtx.OrderDTO); err != nil {
+			return fmt.Errorf("failed to insert order: %w", err)
 		}
 
-		// 3. Placing Order into engine
-		engineOrder := serviceHelper.NewEngineOrderByOrderDto(orderDto)
-		trades, err = s.engine.PlaceOrder(market, req.OrderType, engineOrder)
+		// 3. Place order in matching engine
+		engineOrder := serviceHelper.NewEngineOrderByOrderDto(orderCtx.OrderDTO)
+		trades, err := s.engine.PlaceOrder(orderCtx.Market, orderCtx.Request.OrderType, engineOrder)
 		if err != nil {
-			log.Errorf("[placingLimitOrder] engine.PlaceOrder err: %v", err)
-			return err
-		}
-		// dump engineOrder size&status to orderDto
-		orderDto.RemainingSize = engineOrder.RemainingSize
-		orderDto.Status = engineOrder.GetStatus()
-
-		// 4. Save all matching trade details
-		err = s.tradeRepo.BatchInsert(ctx, tx, trades)
-		if err != nil {
-			log.Errorf("[placingLimitOrder] tradeRepo.BatchInsert err: %v", err)
-			return err
+			return fmt.Errorf("failed to place order in engine: %w", err)
 		}
 
-		return err
-	})
+		// Update order status from engine result
+		orderCtx.syncTradeResult(engineOrder, trades)
 
-	// IF Txn-1 Got Error:
-	if err != nil {
-		log.Errorf("[placingLimitOrder] PlaceOrder Txn-1 process has err: %v", err)
-		return nil, trades, err
-	}
-
-	// Collect trades data to updateOrderDataList and settlementList
-	settlementResult, err := serviceHelper.ProcessTradeSettlement(orderDto, trades)
-	if err != nil {
-		log.Errorf("[placingLimitOrder] TidyUpTradesData err: %v", err)
-		return nil, trades, err
-	}
-
-	// Txn-2: handle matching trades flow and update orders.
-	err = WithTx(ctx, s.db, func(tx *sql.Tx) error {
-		for _, ou := range settlementResult.OrderUpdates {
-			// decreasing order remainingSize and update quoteAmt, avgDealtAmt
-			err = s.orderRepo.SyncTradeMatchingResult(ctx, tx, ou.OrderID, ou.RemainingSizeDecreasing, ou.DealtQuoteAmountIncreasing)
-			if err != nil {
-				log.Errorf("[placingLimitOrder] SyncTradeMatchingResult err: %v", err)
-				return err
+		// 4. Save trade records
+		if len(orderCtx.Trades) > 0 {
+			if err := s.tradeRepo.BatchInsert(ctx, tx, trades); err != nil {
+				return fmt.Errorf("failed to insert trades: %w", err)
 			}
 		}
 
-		for userId, us := range settlementResult.UserSettlements {
-			err = s.balanceRepo.UpdateAsset(ctx, tx, userId, baseAsset, us.BaseAssetAvailable, us.BaseAssetLocked)
-			if err != nil {
-				log.Errorf("[placingLimitOrder] Update Base Asset err: %v", err)
-				return err
+		// 5. Handle market bid order special case
+		if isMarketOrder && orderCtx.Request.Side == model.BID {
+			if err := s.orderRepo.UpdateOriginalSize(ctx, tx, engineOrder.ID, engineOrder.OriginalSize); err != nil {
+				return fmt.Errorf("failed to update original size: %w", err)
 			}
-			err = s.balanceRepo.UpdateAsset(ctx, tx, userId, quoteAsset, us.QuoteAssetAvailable, us.QuoteAssetLocked)
-			if err != nil {
-				log.Errorf("[placingLimitOrder] Update Quote Asset err: %v", err)
-				return err
-			}
+			orderCtx.OrderDTO.OriginalSize = engineOrder.OriginalSize
 		}
+
 		return nil
 	})
-
-	if err != nil {
-		log.Errorf("[placingLimitOrder] PlaceOrder Txn-2 process has err: %v", err)
-		return nil, trades, err
-	}
-
-	return orderDto, trades, nil
 }
 
-func (s *orderService) placingMarketOrder(ctx context.Context, market, userID string, req *dto.OrderReq, assetDetails *orderAssetDetails) (*dto.Order, []book.Trade, error) {
-	orderDto := serviceHelper.NewMarketOrderDtoByOrderReq(market, userID, req)
-	log.Infof("[placingMarketOrder] orderDto: %v", orderDto)
-
-	var err error
-	var trades []book.Trade
-
-	freezeAsset := assetDetails.freezeAsset // The Asset that will be locked by incoming order's userId
-	freezeAmt := assetDetails.freezeAmount  // The Asset's Amount that will be locked by incoming order's userId
-	baseAsset := assetDetails.baseAsset     // Market base asset (ex: ETH, BTC)
-	quoteAsset := assetDetails.quoteAsset   // Market quote asset (ex: USDT, USDC)
-
-	// Txn-1: process placing order flow.
-	err = WithTx(ctx, s.db, func(tx *sql.Tx) error {
-		// 1. Freeze funds based on market and side.
-		err = s.balanceRepo.LockedByUserIdAndAsset(ctx, tx, userID, freezeAsset, freezeAmt)
-		if err != nil {
-			log.Warnf("[placingMarketOrder] BalanceRepo.LockedByUserIdAndAsset err: %v", err)
-			return err
-		}
-
-		// 2. Save new orderDto into DB.
-		err = s.orderRepo.Insert(ctx, tx, orderDto)
-		if err != nil {
-			log.Errorf("[placingMarketOrder] OrderRepo.Insert err: %v", err)
-			return err
-		}
-
-		// 3. Placing Order into engine
-		engineOrder := serviceHelper.NewEngineOrderByOrderDto(orderDto)
-		trades, err = s.engine.PlaceOrder(market, req.OrderType, engineOrder)
-		if err != nil {
-			log.Errorf("[placingMarketOrder] engine.PlaceOrder err: %v", err)
-			return err
-		}
-
-		// dump engineOrder size&status to orderDto
-		orderDto.RemainingSize = engineOrder.RemainingSize
-		orderDto.Status = engineOrder.GetStatus()
-
-		// 4. Save all matching trade details
-		err = s.tradeRepo.BatchInsert(ctx, tx, trades)
-		if err != nil {
-			log.Errorf("[placingMarketOrderplacingMarketOrder] tradeRepo.BatchInsert err: %v", err)
-			return err
-		}
-
-		// 5. MarketBidOrder need update: order.OriginalSize, because we can only know how much qty has been trade by MarketBidOrder.
-		if engineOrder.Side == model.BID {
-			err = s.orderRepo.UpdateOriginalSize(ctx, tx, engineOrder.ID, engineOrder.OriginalSize)
-			orderDto.OriginalSize = engineOrder.OriginalSize
-			if err != nil {
-				log.Errorf("[placingMarketOrder] orderRepo.UpdateOriginalSize err: %v", err)
-				return err
-			}
-		}
-		return err
-	})
-
-	// IF Txn-1 Got Error:
-	if err != nil {
-		log.Errorf("[placingMarketOrder] PlaceOrder Txn-1 process has err: %v", err)
-		return nil, trades, err
+func (s *orderService) executeTradeSettlementPhase(ctx context.Context, orderCtx *PlaceOrderContext) error {
+	if len(orderCtx.Trades) == 0 {
+		return nil // No trades to settle
 	}
 
-	// Collect trades data to updateOrderDataList and settlementList
-	settlementResult, err := serviceHelper.ProcessTradeSettlement(orderDto, trades)
+	settlementResult, err := serviceHelper.ProcessTradeSettlement(orderCtx.OrderDTO, orderCtx.Trades)
 	if err != nil {
-		log.Errorf("[placingMarketOrder] TidyUpTradesData err: %v", err)
-		return nil, trades, err
+		return fmt.Errorf("failed to process trade settlement: %w", err)
 	}
 
-	// Txn-2: handle matching trades flow and update orders.
-	err = WithTx(ctx, s.db, func(tx *sql.Tx) error {
-		for _, ou := range settlementResult.OrderUpdates {
-			// decreasing order remainingSize and update quoteAmt, avgDealtAmt
-			err = s.orderRepo.SyncTradeMatchingResult(ctx, tx, ou.OrderID, ou.RemainingSizeDecreasing, ou.DealtQuoteAmountIncreasing)
-			if err != nil {
-				log.Errorf("[placingMarketOrder] SyncTradeMatchingResult err: %v", err)
-				return err
+	return WithTx(ctx, s.db, func(tx *sql.Tx) error {
+		// Update orders
+		for _, orderUpdate := range settlementResult.OrderUpdates {
+			if err := s.orderRepo.SyncTradeMatchingResult(ctx, tx, orderUpdate.OrderID, orderUpdate.RemainingSizeDecreasing, orderUpdate.DealtQuoteAmountIncreasing); err != nil {
+				return fmt.Errorf("failed to sync trade matching result for order %s: %w", orderUpdate.OrderID, err)
 			}
 		}
 
-		for userId, us := range settlementResult.UserSettlements {
-			err = s.balanceRepo.UpdateAsset(ctx, tx, userId, baseAsset, us.BaseAssetAvailable, us.BaseAssetLocked)
-			if err != nil {
-				log.Errorf("[placingMarketOrder] Update Base Asset err: %v", err)
-				return err
-			}
-			err = s.balanceRepo.UpdateAsset(ctx, tx, userId, quoteAsset, us.QuoteAssetAvailable, us.QuoteAssetLocked)
-			if err != nil {
-				log.Errorf("[placingMarketOrder] Update Quote Asset err: %v", err)
-				return err
+		// Update user balances
+		for userID, settlement := range settlementResult.UserSettlements {
+			if err := s.updateUserAssets(ctx, tx, userID, orderCtx.Assets, settlement); err != nil {
+				return fmt.Errorf("failed to update assets for user %s: %w", userID, err)
 			}
 		}
+
 		return nil
 	})
-
-	if err != nil {
-		log.Errorf("[placingMarketOrder] PlaceOrder Txn-2 process has err: %v", err)
-		return nil, trades, err
-	}
-
-	return orderDto, trades, nil
 }
 
-// Core Logic (Placing 2 types of Order) <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+// updateUserAssets Update user base and quote assets.
+func (s *orderService) updateUserAssets(ctx context.Context, tx *sql.Tx, userID string, assets *AssetDetails, settlement *serviceHelper.UserSettlementData) error {
+	// update BASE asset for user.
+	if err := s.balanceRepo.UpdateAsset(ctx, tx, userID, assets.BaseAsset, settlement.BaseAssetAvailable, settlement.BaseAssetLocked); err != nil {
+		return fmt.Errorf("failed to update base asset: %w", err)
+	}
+	// update Quote asset for user.
+	if err := s.balanceRepo.UpdateAsset(ctx, tx, userID, assets.QuoteAsset, settlement.QuoteAssetAvailable, settlement.QuoteAssetLocked); err != nil {
+		return fmt.Errorf("failed to update quote asset: %w", err)
+	}
+
+	return nil
+}
 
 func (s *orderService) CancelOrder(ctx context.Context, market, userID, orderID string) (*dto.Order, error) {
 	if market == "" || userID == "" || orderID == "" {
-		return nil, fmt.Errorf("invalid input")
+		return nil, ErrInvalidInput
 	}
 
 	orderDto, err := s.orderRepo.GetOrderByOrderId(ctx, s.db, orderID)
 	if err != nil {
-		log.Warnf("[CancelOrder] orderRepo.GetOrderByOrderId err: %v", err)
-		return nil, err
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrOrderNotFound
+		}
+		return nil, fmt.Errorf("failed to get order: %w", err)
 	}
 
 	if orderDto.UserID != userID {
-		log.Warnf("[CancelOrder] failed, order not belongs to user: %v", err)
-		return nil, fmt.Errorf("order not belongs to user")
+		return nil, ErrOrderNotBelongsToUser
 	}
 
 	engineOrder, err := s.engine.CancelOrder(market, orderID)
 	if err != nil {
-		log.Errorf("[CancelOrder] engine.CancelOrder err: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to cancel order in engine: %w", err)
 	}
 
 	err = WithTx(ctx, s.db, func(tx *sql.Tx) error {
-		// update order
+		// Update order status
 		orderDto.RemainingSize = engineOrder.RemainingSize
 		orderDto.Status = model.ORDER_STATUS_CANCELED
-		err = s.orderRepo.Update(ctx, tx, orderDto)
-		if err != nil {
-			log.Errorf("[CancelOrder] orderRepo.CancelOrder err: %v", err)
-			return err
+
+		if err := s.orderRepo.Update(ctx, tx, orderDto); err != nil {
+			return fmt.Errorf("failed to update order: %w", err)
 		}
-		// refund user balances
+
+		// Calculate and process refund
 		unlockAsset, unlockAmount, err := serviceHelper.CalculateRefund(s.engine, market, engineOrder)
 		if err != nil {
-			log.Errorf("[CancelOrder] calculate refund error: %v", err)
+			return fmt.Errorf("failed to calculate refund: %w", err)
 		}
-		err = s.balanceRepo.UnlockedByUserIdAndAsset(ctx, tx, userID, unlockAsset, unlockAmount)
-		if err != nil {
-			log.Errorf("[CancelOrder] balanceRepo.UnlockedByUserIdAndAsset err: %v", err)
-			return err
+
+		if unlockAmount > 0 {
+			if err := s.balanceRepo.UnlockedByUserIdAndAsset(ctx, tx, userID, unlockAsset, unlockAmount); err != nil {
+				return fmt.Errorf("failed to unlock balance: %w", err)
+			}
 		}
+
 		return nil
 	})
+
 	if err != nil {
-		log.Errorf("[CancelOrder] WithTx err: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to cancel order transaction: %w", err)
 	}
 
 	return orderDto, nil
 }
 
 func (s *orderService) QueryOrder(ctx context.Context, userID string, isOpenOrder bool) ([]*dto.Order, error) {
-	statuses := orderStatusesByOpenFlag(isOpenOrder)
-	return s.orderRepo.GetOrdersByUserIdAndStatuses(ctx, s.db, userID, statuses)
+	if userID == "" {
+		return nil, ErrInvalidInput
+	}
+
+	statuses := getOrderStatusesByOpenFlag(isOpenOrder)
+	orders, err := s.orderRepo.GetOrdersByUserIdAndStatuses(ctx, s.db, userID, statuses)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query orders: %w", err)
+	}
+
+	return orders, nil
 }
 
-func orderStatusesByOpenFlag(isOpen bool) []model.OrderStatus {
+func getOrderStatusesByOpenFlag(isOpen bool) []model.OrderStatus {
 	if isOpen {
 		return []model.OrderStatus{
 			model.ORDER_STATUS_NEW,
@@ -360,28 +331,35 @@ func orderStatusesByOpenFlag(isOpen bool) []model.OrderStatus {
 	}
 }
 
-func validatePlacingOrderReq(userId, market string, req *dto.OrderReq) error {
-	if userId == "" {
+func validatePlacingOrderReq(userID, market string, req *dto.OrderReq) error {
+	switch {
+	case userID == "":
 		return errors.New("user id is required")
-	}
-	if market == "" {
+	case market == "":
 		return errors.New("market is required")
+	case req == nil:
+		return errors.New("order request is required")
 	}
 
-	if req.Side == model.ASK {
-		if req.Size <= 0 {
-			return errors.New("ask order size must be greater than zero")
-		}
+	// Validate Ask orders
+	if req.Side == model.ASK && req.Size <= 0 {
+		return errors.New("ask order size must be greater than zero")
 	}
 
+	// Validate Bid orders
 	if req.Side == model.BID {
 		if req.OrderType == book.MARKET && req.QuoteAmount <= 0 {
-			return errors.New("bid order quote amount must be greater than zero")
+			return errors.New("bid market order quote amount must be greater than zero")
+		}
+		if req.OrderType == book.LIMIT && req.Size <= 0 {
+			return errors.New("bid limit order size must be greater than zero")
 		}
 	}
 
-	if req.OrderType == book.LIMIT && (req.Price <= 0 || req.Size <= 0) {
-		return errors.New("limit order price and size must be greater than zero")
+	// Validate Limit orders
+	if req.OrderType == book.LIMIT && req.Price <= 0 {
+		return errors.New("limit order price must be greater than zero")
 	}
+
 	return nil
 }

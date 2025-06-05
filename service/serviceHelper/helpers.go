@@ -1,91 +1,97 @@
 package serviceHelper
 
 import (
-	"github.com/google/uuid"
+	"fmt"
 	"github.com/johnny1110/crypto-exchange/dto"
 	"github.com/johnny1110/crypto-exchange/engine-v2/book"
 	"github.com/johnny1110/crypto-exchange/engine-v2/core"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
-	"github.com/labstack/gommon/log"
-	"time"
 )
 
-func ParseMarket(engine *core.MatchingEngine, market string) (base, quote string, err error) {
-	ob, err := engine.GetOrderBook(market)
-	if err != nil {
-		return "", "", err
+// ParseMarket extracts base and quote assets from market
+func ParseMarket(engine *core.MatchingEngine, market string) (string, string, error) {
+	if engine == nil {
+		return "", "", fmt.Errorf("engine cannot be nil")
 	}
-	info := ob.MarketInfo()
-	return info.BaseAsset, info.QuoteAsset, nil
+	if market == "" {
+		return "", "", fmt.Errorf("market cannot be empty")
+	}
+
+	orderBook, err := engine.GetOrderBook(market)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to get order book for market %s: %w", market, err)
+	}
+
+	marketInfo := orderBook.MarketInfo()
+	if marketInfo.BaseAsset == "" || marketInfo.QuoteAsset == "" {
+		return "", "", fmt.Errorf("invalid market info for market %s", market)
+	}
+
+	return marketInfo.BaseAsset, marketInfo.QuoteAsset, nil
 }
 
-func DetermineFreezeValue(req *dto.OrderReq, base string, quote string) (freezeAsset string, freezeAmt float64) {
-	if req.Side == model.BID {
-		freezeAsset = quote
-		switch req.OrderType {
-		case book.LIMIT:
-			// limit buy order, freeze price*size
-			freezeAmt = req.Price * req.Size
-			break
-		case book.MARKET:
-			// market order freeze quoteAmt
-			freezeAmt = req.QuoteAmount
-		}
-	} else {
-		// all ask order just freeze base asset size
-		freezeAsset = base
-		freezeAmt = req.Size
+// DetermineFreezeValue calculates which asset and amount to freeze
+func DetermineFreezeValue(req *dto.OrderReq, baseAsset, quoteAsset string) (string, float64) {
+	if req == nil {
+		return "", 0
 	}
-	return freezeAsset, freezeAmt
+
+	switch req.Side {
+	case model.BID:
+		return calculateBidFreezeValue(req, quoteAsset)
+	case model.ASK:
+		return baseAsset, req.Size
+	default:
+		return "", 0
+	}
+}
+
+func calculateBidFreezeValue(req *dto.OrderReq, quoteAsset string) (string, float64) {
+	switch req.OrderType {
+	case book.LIMIT:
+		return quoteAsset, req.Price * req.Size
+	case book.MARKET:
+		return quoteAsset, req.QuoteAmount
+	default:
+		return quoteAsset, 0
+	}
 }
 
 func NewLimitOrderDtoByOrderReq(market, userID string, req *dto.OrderReq) *dto.Order {
-	return &dto.Order{
-		ID:            uuid.NewString(),
-		UserID:        userID,
-		Market:        market,
-		Side:          req.Side,
-		Price:         req.Price,
-		OriginalSize:  req.Size,
-		RemainingSize: req.Size,
-		QuoteAmount:   0.0,
-		AvgDealtPrice: 0.0,
-		Type:          book.LIMIT,
-		Mode:          req.Mode,
-		Status:        model.ORDER_STATUS_NEW,
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
-	}
+	return dto.NewOrderBuilder().
+		WithMarket(market).
+		WithUser(userID).
+		WithSide(req.Side).
+		WithType(book.LIMIT).
+		WithMode(req.Mode).
+		WithPrice(req.Price).
+		WithSize(req.Size).
+		Build()
 }
 
 func NewMarketOrderDtoByOrderReq(market, userID string, req *dto.OrderReq) *dto.Order {
-	size := 0.0
-	quoteAmt := 0.0
+	builder := dto.NewOrderBuilder().
+		WithMarket(market).
+		WithUser(userID).
+		WithSide(req.Side).
+		WithType(book.MARKET).
+		WithMode(model.TAKER).
+		WithPrice(-1) // Market orders don't have a specific price
+
 	if req.Side == model.BID {
-		quoteAmt = req.QuoteAmount
+		builder.WithQuoteAmount(req.QuoteAmount)
 	} else {
-		size = req.Size
+		builder.WithSize(req.Size)
 	}
 
-	return &dto.Order{
-		ID:            uuid.NewString(),
-		UserID:        userID,
-		Market:        market,
-		Side:          req.Side,
-		Price:         -1,
-		OriginalSize:  size,
-		RemainingSize: size,
-		QuoteAmount:   quoteAmt,
-		AvgDealtPrice: 0.0,
-		Type:          book.MARKET,
-		Mode:          model.TAKER,
-		Status:        model.ORDER_STATUS_NEW,
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
-	}
+	return builder.Build()
 }
 
 func NewEngineOrderByOrderDto(orderDto *dto.Order) *model.Order {
+	if orderDto == nil {
+		return nil
+	}
+
 	return model.NewOrder(
 		orderDto.ID,
 		orderDto.UserID,
@@ -93,43 +99,47 @@ func NewEngineOrderByOrderDto(orderDto *dto.Order) *model.Order {
 		orderDto.Price,
 		orderDto.RemainingSize,
 		orderDto.QuoteAmount,
-		orderDto.Mode)
+		orderDto.Mode,
+	)
 }
 
+// CalculateRefund calculates refund amount for cancelled orders
 func CalculateRefund(engine *core.MatchingEngine, market string, engineOrder *model.Order) (unlockAsset string, unlockAmount float64, err error) {
+	if engine == nil || engineOrder == nil {
+		return "", 0, fmt.Errorf("engine and engineOrder cannot be nil")
+	}
+
 	baseAsset, quoteAsset, err := ParseMarket(engine, market)
 	if err != nil {
-		log.Errorf("[CalculateRefund] ParseMarket err: %v", err)
-		return "", 0, err
+		return "", 0, fmt.Errorf("failed to parse market: %w", err)
 	}
 
 	switch engineOrder.Side {
 	case model.BID:
-		unlockAmount = engineOrder.Price * engineOrder.RemainingSize
-		unlockAsset = quoteAsset
-		break
+		return quoteAsset, engineOrder.Price * engineOrder.RemainingSize, nil
 	case model.ASK:
-		unlockAmount = engineOrder.RemainingSize
-		unlockAsset = baseAsset
+		return baseAsset, engineOrder.RemainingSize, nil
+	default:
+		return "", 0, fmt.Errorf("unknown order side: %v", engineOrder.Side)
 	}
-	return unlockAsset, unlockAmount, nil
 }
 
 func WrapPlaceOrderResult(orderDto *dto.Order, trades []book.Trade) *dto.PlaceOrderResult {
-	matches := make([]*dto.Match, 0, len(trades))
+	if orderDto == nil {
+		return nil
+	}
 
+	matches := make([]*dto.Match, 0, len(trades))
 	for _, trade := range trades {
-		match := &dto.Match{
+		matches = append(matches, &dto.Match{
 			Price:     trade.Price,
 			Size:      trade.Size,
 			Timestamp: trade.Timestamp,
-		}
-		matches = append(matches, match)
+		})
 	}
 
-	res := &dto.PlaceOrderResult{
+	return &dto.PlaceOrderResult{
 		Order:   *orderDto,
 		Matches: matches,
 	}
-	return res
 }

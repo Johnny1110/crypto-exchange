@@ -2,6 +2,7 @@ package dto
 
 import (
 	"encoding/json"
+	"github.com/google/uuid"
 	"github.com/johnny1110/crypto-exchange/engine-v2/book"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
 	"time"
@@ -45,4 +46,66 @@ func (o Order) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(result)
+}
+
+// OrderBuilder provides a fluent interface for building orders
+type OrderBuilder struct {
+	order *Order
+}
+
+// NewOrderBuilder creates a new order builder
+func NewOrderBuilder() *OrderBuilder {
+	return &OrderBuilder{
+		order: &Order{
+			ID:        uuid.NewString(),
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
+	}
+}
+
+func (b *OrderBuilder) WithMarket(market string) *OrderBuilder {
+	b.order.Market = market
+	return b
+}
+
+func (b *OrderBuilder) WithUser(userID string) *OrderBuilder {
+	b.order.UserID = userID
+	return b
+}
+
+func (b *OrderBuilder) WithSide(side model.Side) *OrderBuilder {
+	b.order.Side = side
+	return b
+}
+
+func (b *OrderBuilder) WithType(orderType book.OrderType) *OrderBuilder {
+	b.order.Type = orderType
+	return b
+}
+
+func (b *OrderBuilder) WithMode(mode model.Mode) *OrderBuilder {
+	b.order.Mode = mode
+	return b
+}
+
+func (b *OrderBuilder) WithPrice(price float64) *OrderBuilder {
+	b.order.Price = price
+	return b
+}
+
+func (b *OrderBuilder) WithSize(size float64) *OrderBuilder {
+	b.order.OriginalSize = size
+	b.order.RemainingSize = size
+	return b
+}
+
+func (b *OrderBuilder) WithQuoteAmount(amount float64) *OrderBuilder {
+	b.order.QuoteAmount = amount
+	return b
+}
+
+func (b *OrderBuilder) Build() *Order {
+	b.order.Status = model.ORDER_STATUS_NEW
+	return b.order
 }
