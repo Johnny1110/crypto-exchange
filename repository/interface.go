@@ -6,6 +6,7 @@ import (
 	"github.com/johnny1110/crypto-exchange/dto"
 	"github.com/johnny1110/crypto-exchange/engine-v2/book"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
+	"time"
 )
 
 type DBExecutor interface {
@@ -47,7 +48,8 @@ type IOrderRepository interface {
 	SyncTradeMatchingResult(ctx context.Context, db DBExecutor, orderId string, decreasingSize, dealtQuoteAmount float64, fees float64) error
 	CancelOrder(ctx context.Context, db DBExecutor, orderId string, remainingSize float64) error
 	UpdateOriginalSize(ctx context.Context, db DBExecutor, orderId string, originalSize float64) error
-	GetOrdersByMarketAndStatuses(ctx context.Context, db *sql.DB, market string, statuses []model.OrderStatus) ([]*dto.Order, error)
+	GetOrdersByMarketAndStatuses(ctx context.Context, db DBExecutor, market string, statuses []model.OrderStatus) ([]*dto.Order, error)
+	PaginationQuery(ctx context.Context, db DBExecutor, query *dto.GetOrdersQueryReq, statuses []model.OrderStatus, endTime time.Time) (*dto.PaginationResp[*dto.Order], error)
 }
 
 type ITradeRepository interface {

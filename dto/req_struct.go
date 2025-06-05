@@ -28,3 +28,19 @@ type OrderReq struct {
 	Size        float64         `json:"size"`                                              // only market bid no need
 	QuoteAmount float64         `json:"quote_amount"`                                      // only for taker bid order
 }
+
+type OrdersQueryType = string
+
+const (
+	OPENING_ORDER = OrdersQueryType("OPENING")
+	CLOSED_ORDER  = OrdersQueryType("CLOSED")
+)
+
+type GetOrdersQueryReq struct {
+	UserID      string
+	Market      string          `form:"market"`
+	Side        model.Side      `form:"side"`
+	Type        OrdersQueryType `form:"type" binding:"required"`
+	PageSize    int64           `form:"page_size,default=10"`
+	CurrentPage int64           `form:"current_page,default=1"`
+}

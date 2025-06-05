@@ -7,6 +7,7 @@ import (
 	"github.com/johnny1110/crypto-exchange/dto"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
 	"github.com/johnny1110/crypto-exchange/repository"
+	"math"
 	"strings"
 	"time"
 )
@@ -329,7 +330,7 @@ func (o orderRepository) UpdateOriginalSize(ctx context.Context, db repository.D
 	return nil
 }
 
-func (o orderRepository) GetOrdersByMarketAndStatuses(ctx context.Context, db *sql.DB, market string, statuses []model.OrderStatus) ([]*dto.Order, error) {
+func (o orderRepository) GetOrdersByMarketAndStatuses(ctx context.Context, db repository.DBExecutor, market string, statuses []model.OrderStatus) ([]*dto.Order, error) {
 	if len(statuses) == 0 {
 		return []*dto.Order{}, nil
 	}
@@ -391,4 +392,128 @@ func (o orderRepository) GetOrdersByMarketAndStatuses(ctx context.Context, db *s
 	}
 
 	return orders, nil
+}
+
+func (o orderRepository) PaginationQuery(ctx context.Context, db repository.DBExecutor, query *dto.GetOrdersQueryReq, statuses []model.OrderStatus, endTime time.Time) (*dto.PaginationResp[*dto.Order], error) {
+	if query == nil || len(statuses) == 0 {
+		return nil, fmt.Errorf("invalid query parameters")
+	}
+
+	// Build WHERE conditions
+	var conditions []string
+	var args []interface{}
+
+	// user_id is required
+	conditions = append(conditions, "user_id = ?")
+	args = append(args, query.UserID)
+
+	// status filter (multiple values)
+	statusPlaceholders := make([]string, len(statuses))
+	for i, status := range statuses {
+		statusPlaceholders[i] = "?"
+		args = append(args, string(status))
+	}
+	conditions = append(conditions, fmt.Sprintf("status IN (%s)", strings.Join(statusPlaceholders, ",")))
+
+	// market filter (optional)
+	if query.Market != "" {
+		conditions = append(conditions, "market = ?")
+		args = append(args, query.Market)
+	}
+
+	// side filter (optional)
+	if query.Side != 0 { // assuming 0 is not a valid side value
+		conditions = append(conditions, "side = ?")
+		args = append(args, int(query.Side))
+	}
+
+	// time filter for closed orders (if endTime is set)
+	if !endTime.IsZero() {
+		conditions = append(conditions, "created_at >= ?")
+		args = append(args, endTime)
+	}
+
+	whereClause := strings.Join(conditions, " AND ")
+
+	// Count total records
+	countSQL := fmt.Sprintf("SELECT COUNT(*) FROM orders WHERE %s", whereClause)
+	var total int64
+	if err := db.QueryRowContext(ctx, countSQL, args...).Scan(&total); err != nil {
+		return nil, fmt.Errorf("failed to count orders: %w", err)
+	}
+
+	// Calculate pagination
+	offset := (query.CurrentPage - 1) * query.PageSize
+	totalPages := int64(math.Ceil(float64(total) / float64(query.PageSize)))
+
+	// Query data with pagination
+	dataSQL := fmt.Sprintf(`
+        SELECT id, user_id, market, side, price, original_size, remaining_size, 
+               quote_amount, avg_dealt_price, type, mode, status, fee_rate, 
+               fees, fee_asset, created_at, updated_at 
+        FROM orders 
+        WHERE %s 
+        ORDER BY created_at DESC 
+        LIMIT ? OFFSET ?`, whereClause)
+
+	args = append(args, query.PageSize, offset)
+
+	rows, err := db.QueryContext(ctx, dataSQL, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query orders: %w", err)
+	}
+	defer rows.Close()
+
+	var orders []*dto.Order
+	for rows.Next() {
+		var order dto.Order
+		var feeAsset sql.NullString
+
+		err = rows.Scan(
+			&order.ID,
+			&order.UserID,
+			&order.Market,
+			&order.Side,
+			&order.Price,
+			&order.OriginalSize,
+			&order.RemainingSize,
+			&order.QuoteAmount,
+			&order.AvgDealtPrice,
+			&order.Type,
+			&order.Mode,
+			&order.Status,
+			&order.FeeRate,
+			&order.Fees,
+			&feeAsset,
+			&order.CreatedAt,
+			&order.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan order: %w", err)
+		}
+
+		// Handle nullable fee_asset
+		if feeAsset.Valid {
+			order.FeeAsset = feeAsset.String
+		}
+
+		orders = append(orders, &order)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration error: %w", err)
+	}
+
+	// Build response
+	response := &dto.PaginationResp[*dto.Order]{
+		Result:      orders,
+		Total:       total,
+		CurrentPage: query.CurrentPage,
+		PageSize:    query.PageSize,
+		TotalPages:  totalPages,
+		HasNext:     query.CurrentPage < totalPages,
+		HasPrev:     query.CurrentPage > 1,
+	}
+
+	return response, nil
 }

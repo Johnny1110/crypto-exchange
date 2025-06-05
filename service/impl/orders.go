@@ -13,6 +13,7 @@ import (
 	"github.com/johnny1110/crypto-exchange/service/serviceHelper"
 	"github.com/johnny1110/crypto-exchange/settings"
 	"github.com/labstack/gommon/log"
+	"time"
 )
 
 var (
@@ -242,8 +243,8 @@ func (s *orderService) updateUserAssets(ctx context.Context, tx *sql.Tx, userID 
 	return nil
 }
 
-func (s *orderService) CancelOrder(ctx context.Context, market, userID, orderID string) (*dto.Order, error) {
-	if market == "" || userID == "" || orderID == "" {
+func (s *orderService) CancelOrder(ctx context.Context, userID, orderID string) (*dto.Order, error) {
+	if userID == "" || orderID == "" {
 		return nil, ErrInvalidInput
 	}
 
@@ -259,7 +260,7 @@ func (s *orderService) CancelOrder(ctx context.Context, market, userID, orderID 
 		return nil, ErrOrderNotBelongsToUser
 	}
 
-	engineOrder, err := s.engine.CancelOrder(market, orderID)
+	engineOrder, err := s.engine.CancelOrder(orderDto.Market, orderID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to cancel order in engine: %w", err)
 	}
@@ -274,7 +275,7 @@ func (s *orderService) CancelOrder(ctx context.Context, market, userID, orderID 
 		}
 
 		// Calculate and process refund
-		unlockAsset, unlockAmount, err := serviceHelper.CalculateRefund(s.engine, market, engineOrder)
+		unlockAsset, unlockAmount, err := serviceHelper.CalculateRefund(s.engine, orderDto.Market, engineOrder)
 		if err != nil {
 			return fmt.Errorf("failed to calculate refund: %w", err)
 		}
@@ -318,6 +319,28 @@ func (s *orderService) QueryOrdersByMarketAndStatuses(ctx context.Context, marke
 		return nil, err
 	}
 	return orders, nil
+}
+
+func (s *orderService) PaginationQuery(ctx context.Context, query *dto.GetOrdersQueryReq) (*dto.PaginationResp[*dto.Order], error) {
+	if query == nil {
+		return nil, ErrInvalidInput
+	}
+
+	var endTime time.Time
+	var statuses []model.OrderStatus
+
+	switch query.Type {
+	case dto.OPENING_ORDER:
+		statuses = []model.OrderStatus{model.ORDER_STATUS_NEW, model.ORDER_STATUS_PARTIAL}
+	case dto.CLOSED_ORDER:
+		statuses = []model.OrderStatus{model.ORDER_STATUS_FILLED, model.ORDER_STATUS_CANCELED}
+		// closed order only can search latest 3 months
+		endTime = time.Now().AddDate(0, -3, 0)
+	default:
+		return nil, ErrInvalidInput
+	}
+
+	return s.orderRepo.PaginationQuery(ctx, s.db, query, statuses, endTime)
 }
 
 func (s *orderService) settleFeesRevenue(ctx context.Context, tx *sql.Tx, result *serviceHelper.TradeSettlementResult) error {
