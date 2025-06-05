@@ -27,8 +27,9 @@ type IBalanceService interface {
 type IOrderService interface {
 	PlaceOrder(ctx context.Context, market string, user *dto.User, req *dto.OrderReq) (*dto.PlaceOrderResult, error)
 	QueryOrder(ctx context.Context, userId string, isOpenOrder bool) ([]*dto.Order, error)
-	CancelOrder(ctx context.Context, market, userID, orderID string) (*dto.Order, error)
+	CancelOrder(ctx context.Context, userID, orderID string) (*dto.Order, error)
 	QueryOrdersByMarketAndStatuses(ctx context.Context, market string, statuses []model.OrderStatus) ([]*dto.Order, error)
+	PaginationQuery(ctx context.Context, query *dto.GetOrdersQueryReq) (*dto.PaginationResp[*dto.Order], error)
 }
 
 type IAdminService interface {

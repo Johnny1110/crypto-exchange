@@ -156,7 +156,130 @@ Request-Body:
 <br>
 <br>
 
+
+## Cancel Order
+
+URI: `/api/v1/orders/{order_id}`
+
+Method: DELETE
+
+Headers:
+```
+Authorization: string (login token)
+```
+
+Params:
+```
+order_id: string (mandatory)
+```
+
+Response-Body:
+
+```json
+{
+    "code": "0000000",
+    "message": "success",
+    "timestamp": 1749146832324,
+    "data": {
+        "id": "c654f54e-3872-4cd5-84b8-92a70d2bfd23",
+        "market": "ETH-USDT",
+        "side": 0,
+        "original_size": 0.5,
+        "remaining_size": 0.5,
+        "quote_amount": 0,
+        "avg_dealt_price": 0,
+        "type": 0,
+        "mode": 1,
+        "status": "CANCELED", // CANCELED
+        "fees": 0,
+        "fee_asset": "ETH",
+        "price": 3001,
+        "fee_rate": "0.2000%",
+        "created_at": 1749146780831,
+        "updated_at": 1749146780831
+    }
+}
+```
+
+<br>
+<br>
+
 ## Query Order
 
-TODO: query open order.
-TODO: query dealt order.
+<br>
+
+URI: `/api/v1/orders`
+
+Method: GET
+
+Headers:
+```
+Authorization: string (login token)
+```
+
+Params:
+```
+market: string (optional) e,g, "ETH-USDT"
+side: number (optional) 0: buy-order 1: sell-order
+type: string (mandatory) "OPENING", "CLOSED"
+page_size: number (optioanl) default=10
+current_page: number (optioanl) default=1
+```
+
+<br>
+
+Response-Body:
+
+```json
+{
+    "code": "0000000",
+    "message": "success",
+    "timestamp": 1749147236137,
+    "data": {
+        "total": 20,
+        "total_page": 2,
+        "current_page": 1,
+        "page_size": 10,
+        "has_next": true,
+        "has_prev": false,
+        "result": [
+            {
+                "id": "c654f54e-3872-4cd5-84b8-92a70d2bfd23",
+                "market": "ETH-USDT",
+                "side": 0,
+                "original_size": 0.5,
+                "remaining_size": 0.5,
+                "quote_amount": 0,
+                "avg_dealt_price": 0,
+                "type": 0,
+                "mode": 1,
+                "status": "CANCELED",
+                "fees": 0,
+                "fee_asset": "ETH",
+                "price": 3001,
+                "fee_rate": "0.2000%",
+                "created_at": 1749146780831,
+                "updated_at": 1749146832314
+            },
+            {
+                "id": "dd1853bf-1266-4f24-b386-7a4e3c47a9ce",
+                "market": "ETH-USDT",
+                "side": 1,
+                "original_size": 0.15,
+                "remaining_size": 0,
+                "quote_amount": 450,
+                "avg_dealt_price": 3000,
+                "type": 1,
+                "mode": 1,
+                "status": "FILLED",
+                "fees": 0.9,
+                "fee_asset": "USDT",
+                "fee_rate": "0.2000%",
+                "created_at": 1749146639744,
+                "updated_at": 1749146639754
+            },
+            ...
+        ]
+    }
+}
+```
