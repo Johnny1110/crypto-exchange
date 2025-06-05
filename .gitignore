@@ -29,3 +29,5 @@ bin
 .idea
 
 node_modules
+
+exg.db
