@@ -11,6 +11,14 @@ import (
 	"time"
 )
 
+// Errors
+var (
+	ErrOrderExists          = errors.New("order already exists")
+	ErrOrderNotFound        = errors.New("order not found")
+	ErrInsufficientVolume   = errors.New("insufficient volume")
+	ErrUnsupportedOrderType = errors.New("unsupported order type")
+)
+
 // Trade (Match) represents a filled trade between two orders.
 type Trade struct {
 	BidOrderID string
@@ -25,31 +33,20 @@ type Trade struct {
 // String implements fmt.Stringer, returning a full snapshot of the trade.
 func (t Trade) String() string {
 	return fmt.Sprintf(
-		"Trade{BidOrderID: %q, AskOrderID: %q, Price: %.2f, Size: %.4f, Timestamp: %s}",
-		t.BidOrderID,
-		t.AskOrderID,
-		t.Price,
-		t.Size,
-		t.Timestamp.Format(time.RFC3339),
+		"Trade{BidOrderID: %q, AskOrderID: %q, Price: %.8f, Size: %.8f, Timestamp: %s}",
+		t.BidOrderID, t.AskOrderID, t.Price, t.Size, t.Timestamp.Format(time.RFC3339),
 	)
 }
 
-func (t Trade) GeOrderIDBySide(side model.Side) string {
+// GetOrderIDBySide returns order ID by side
+func (t Trade) GetOrderIDBySide(side model.Side) string {
 	switch side {
 	case model.BID:
 		return t.BidOrderID
 	case model.ASK:
 		return t.AskOrderID
 	}
-	panic("unreachable")
-}
-
-// BookSnapshot only hold bid highest 20, and ask lowest 20.
-type BookSnapshot struct {
-	// key: priceLevel value: volume
-	BidSide     []*PriceVolumePair
-	AskSide     []*PriceVolumePair
-	LatestPrice float64
+	panic(fmt.Sprintf("invalid side: %v", side))
 }
 
 type PriceVolumePair struct {
@@ -64,11 +61,20 @@ func NewPriceVolumePair(price float64, volume float64) *PriceVolumePair {
 	}
 }
 
+// BookSnapshot holds the top 20 bid and ask levels
+type BookSnapshot struct {
+	// key: priceLevel value: volume
+	BidSide     []*PriceVolumePair
+	AskSide     []*PriceVolumePair
+	LatestPrice float64
+	Timestamp   time.Time
+}
+
 func NewBookSnapshot() *BookSnapshot {
 	return &BookSnapshot{
-		BidSide:     make([]*PriceVolumePair, 0, 20),
-		AskSide:     make([]*PriceVolumePair, 0, 20),
-		LatestPrice: 0.0,
+		BidSide:   make([]*PriceVolumePair, 0, 20),
+		AskSide:   make([]*PriceVolumePair, 0, 20),
+		Timestamp: time.Now(),
 	}
 }
 
@@ -79,15 +85,21 @@ type OrderBook struct {
 	askSide     *BookSide
 	orderIndex  *OrderIndex
 	latestPrice float64
-	obMu        sync.RWMutex  // OrderBook RW mutex
-	snapshot    *BookSnapshot // best top 20 price snapshot
-	snapshotMu  sync.RWMutex  // BookSnapshot RW mutex
+
+	snapshot *BookSnapshot // best top 20 price snapshot
+
+	// lock
+	obMu       sync.RWMutex // OrderBook RW mutex
+	snapshotMu sync.RWMutex // BookSnapshot RW mutex
 }
 
 // NewOrderBook creates a new OrderBook instance.
-func NewOrderBook(market *market.MarketInfo) *OrderBook {
+func NewOrderBook(marketInfo *market.MarketInfo) *OrderBook {
+	if marketInfo == nil {
+		panic("market info cannot be nil")
+	}
 	return &OrderBook{
-		market:     market,
+		market:     marketInfo,
 		bidSide:    NewBookSide(true),
 		askSide:    NewBookSide(false),
 		orderIndex: NewOrderIndex(),
@@ -95,129 +107,101 @@ func NewOrderBook(market *market.MarketInfo) *OrderBook {
 	}
 }
 
-// Snapshot return snapshot
-func (ob *OrderBook) Snapshot() BookSnapshot {
-	ob.snapshotMu.Lock()
-	defer ob.snapshotMu.Unlock()
-	bidCopy := make([]*PriceVolumePair, len(ob.snapshot.BidSide))
-	copy(bidCopy, ob.snapshot.BidSide)
+// getSide returns the book side for the given order side
+func (ob *OrderBook) getSide(side model.Side) *BookSide {
+	if side == model.BID {
+		return ob.bidSide
+	}
+	return ob.askSide
+}
 
-	askCopy := make([]*PriceVolumePair, len(ob.snapshot.AskSide))
-	copy(askCopy, ob.snapshot.AskSide)
+// getOppositeSide returns the opposite book side
+func (ob *OrderBook) getOppositeSide(side model.Side) *BookSide {
+	if side == model.BID {
+		return ob.askSide
+	}
+	return ob.bidSide
+}
+
+// Snapshot returns a copy of the current book snapshot
+func (ob *OrderBook) Snapshot() BookSnapshot {
+	ob.snapshotMu.RLock()
+	defer ob.snapshotMu.RUnlock()
 
 	return BookSnapshot{
-		BidSide:     bidCopy,
-		AskSide:     askCopy,
+		BidSide:     ob.copyPriceVolumePairs(ob.snapshot.BidSide),
+		AskSide:     ob.copyPriceVolumePairs(ob.snapshot.AskSide),
 		LatestPrice: ob.snapshot.LatestPrice,
+		Timestamp:   ob.snapshot.Timestamp,
 	}
 }
 
-// Refresh Do refresh snapshot, read lock orderbook, and write lock snapshot
-// Run a 500 ms job to refresh
+// copyPriceVolumePairs creates a deep copy of price-volume pairs
+func (ob *OrderBook) copyPriceVolumePairs(pairs []*PriceVolumePair) []*PriceVolumePair {
+	if pairs == nil {
+		return nil
+	}
+
+	copied := make([]*PriceVolumePair, len(pairs))
+	for i, pair := range pairs {
+		copied[i] = &PriceVolumePair{Price: pair.Price, Volume: pair.Volume}
+	}
+	return copied
+}
+
+// RefreshSnapshot updates the snapshot with current top 20 levels
 func (ob *OrderBook) RefreshSnapshot() {
 	ob.obMu.RLock()
-	ob.snapshotMu.Lock()
-	defer ob.snapshotMu.Unlock()
 	defer ob.obMu.RUnlock()
 
-	// clean bidSide snapshot
-	ob.snapshot.BidSide = ob.snapshot.BidSide[:0]
-	// iterate bidPriceLevel from max collect top 20 (price:volume) and save into ob.snapshot
+	ob.snapshotMu.Lock()
+	defer ob.snapshotMu.Unlock()
+
+	ob.refreshBidSnapshot()
+	ob.refreshAskSnapshot()
+	ob.snapshot.LatestPrice = ob.latestPrice
+	ob.snapshot.Timestamp = time.Now()
+}
+
+// refreshBidSnapshot refreshes bid side snapshot (top 20 highest prices)
+func (ob *OrderBook) refreshBidSnapshot() {
+	ob.snapshot.BidSide = ob.snapshot.BidSide[:0] // Reset slice
+
 	it := ob.bidSide.priceLevels.Iterator()
-	it.End() // move to the largest key
+	it.End() // Start from highest price
+
 	count := 0
 	for it.Prev() && count < 20 {
 		price := it.Key().(float64)
 		deque := it.Value().(*util.OrderNodeDeque)
 		volume := deque.Volume()
-		ob.snapshot.BidSide = append(ob.snapshot.BidSide, NewPriceVolumePair(price, volume))
+
+		ob.snapshot.BidSide = append(ob.snapshot.BidSide,
+			NewPriceVolumePair(price, volume))
 		count++
 	}
+}
 
-	// clean askSide snapshot
-	ob.snapshot.AskSide = ob.snapshot.AskSide[:0]
-	// iterate askPriceLevel from min collect top 20 (price:volume) and save into ob.snapshot
-	it = ob.askSide.priceLevels.Iterator()
-	it.Begin() // move to smallest key
-	count = 0
+// refreshAskSnapshot refreshes ask side snapshot (top 20 lowest prices)
+func (ob *OrderBook) refreshAskSnapshot() {
+	ob.snapshot.AskSide = ob.snapshot.AskSide[:0] // Reset slice
+
+	it := ob.askSide.priceLevels.Iterator()
+	it.Begin() // Start from lowest price
+
+	count := 0
 	for it.Next() && count < 20 {
 		price := it.Key().(float64)
 		deque := it.Value().(*util.OrderNodeDeque)
 		volume := deque.Volume()
-		ob.snapshot.AskSide = append(ob.snapshot.AskSide, NewPriceVolumePair(price, volume))
+
+		ob.snapshot.AskSide = append(ob.snapshot.AskSide,
+			NewPriceVolumePair(price, volume))
 		count++
 	}
-
-	ob.snapshot.LatestPrice = ob.latestPrice
 }
 
-// PlaceOrder place order into order book, support LIMIT/MAKER, LIMIT/TAKER and MARKET 3 kind of scenario
-func (ob *OrderBook) PlaceOrder(orderType model.OrderType, order *model.Order) ([]Trade, error) {
-	ob.obMu.Lock()
-	defer ob.obMu.Unlock()
-
-	// check id exists
-	if ob.orderIndex.OrderIdExist(order.ID) {
-		return nil, fmt.Errorf("order ID %s already exists", order.ID)
-	}
-
-	var trades []Trade
-	var err error
-
-	switch orderType {
-	case model.LIMIT:
-		// LIMIT-Maker, place order into book and return directly
-		if order.Mode == model.MAKER {
-			log.Infof("[OrderBook] PlaceOrder (maker) LIMIT order, orderID:[%s]", order.ID)
-			err = ob.makeLimitOrder(order)
-			return nil, err
-		} else {
-			log.Infof("[OrderBook] PlaceOrder (taker) LIMIT order, orderID:[%s]", order.ID)
-			// LIMIT-Taker
-			trades, err = ob.takeLimitOrder(order)
-		}
-		break
-	case model.MARKET:
-		// MARKET always will be Taker
-		log.Infof("[OrderBook] PlaceOrder (taker) MARKET order, orderID:[%s]", order.ID)
-		if order.Side == model.BID {
-			// market bid eat opposite order based on order.quoteAmount
-			trades, err = ob.takeMarketBidOrder(order)
-		} else {
-			// market ask eat opposite order based on order.RemainingSize, just like limit ask did.
-			trades, err = ob.takeMarketAskOrder(order)
-		}
-		break
-	default:
-		return nil, fmt.Errorf("unsupported order type: %v", orderType)
-	}
-
-	// if matching error (takeLimitOrder or takeMarketOrder), return directly.
-	if err != nil {
-		return nil, err
-	}
-
-	// update last matching price
-	ob.updateLatestPrice(trades)
-	return trades, nil
-}
-
-// MakeLimitOrder adds a new limit order to the book without attempting to match. (Maker)
-func (ob *OrderBook) makeLimitOrder(order *model.Order) error {
-	node := &model.OrderNode{Order: order}
-
-	// Insert node into side
-	if order.Side == model.BID {
-		ob.bidSide.AddOrderNode(order.Price, node)
-	} else {
-		ob.askSide.AddOrderNode(order.Price, node)
-	}
-
-	// Add to index for fast lookup/cancel
-	ob.addOrderIndex(node)
-
-	return nil
-}
+// Order Section >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 // CancelOrder removes an existing order from the book by its ID.
 func (ob *OrderBook) CancelOrder(orderID string) (*model.Order, error) {
@@ -227,87 +211,128 @@ func (ob *OrderBook) CancelOrder(orderID string) (*model.Order, error) {
 	// Lookup index
 	side, price, node, found := ob.orderIndex.Get(orderID)
 	if !found {
-		return nil, errors.New("order not found")
+		return nil, fmt.Errorf("%w: %s", ErrOrderNotFound, orderID)
 	}
 
-	// Remove from book side
-	if side == model.BID {
-		if err := ob.bidSide.RemoveOrderNode(price, node); err != nil {
-			return nil, err
-		}
-	} else {
-		if err := ob.askSide.RemoveOrderNode(price, node); err != nil {
-			return nil, err
-		}
+	// Remove from appropriate book side
+	bookSide := ob.getSide(side)
+	if err := bookSide.RemoveOrderNode(price, node); err != nil {
+		return nil, fmt.Errorf("failed to remove order from book side: %w", err)
 	}
 
 	// Remove from index
 	return ob.removeOrderIndex(orderID)
 }
 
-// Match attempts to match an incoming order against the book and returns the resulting trades.
-// Any unfilled portion of the incoming order will be added to the book. (Taker)
+// PlaceOrder place order into order book, support LIMIT/MAKER, LIMIT/TAKER and MARKET 3 kind of scenario
+func (ob *OrderBook) PlaceOrder(orderType model.OrderType, order *model.Order) ([]Trade, error) {
+	if order == nil {
+		return nil, errors.New("order cannot be nil")
+	}
+
+	ob.obMu.Lock()
+	defer ob.obMu.Unlock()
+
+	// Check if order ID already exists
+	if ob.orderIndex.OrderIdExist(order.ID) {
+		return nil, fmt.Errorf("%w: %s", ErrOrderExists, order.ID)
+	}
+
+	log.Infof("[OrderBook] PlaceOrder %s order, orderID: %s, side: %s", orderType, order.ID, order.Side)
+
+	switch orderType {
+	case model.LIMIT:
+		return ob.placeLimitOrder(order)
+	case model.MARKET:
+		return ob.placeMarketOrder(order)
+	default:
+		return nil, fmt.Errorf("%w: %v", ErrUnsupportedOrderType, orderType)
+	}
+}
+
+// placeLimitOrder handles limit order placement
+func (ob *OrderBook) placeLimitOrder(order *model.Order) ([]Trade, error) {
+	if order.Mode == model.MAKER {
+		// Maker order: add to book without matching
+		err := ob.makeLimitOrder(order)
+		return nil, err
+	}
+
+	// Taker order: try to match first, then add remainder to book
+	trades, err := ob.takeLimitOrder(order)
+	if err != nil {
+		return nil, err
+	}
+
+	ob.updateLatestPrice(trades)
+	return trades, nil
+}
+
+// placeMarketOrder handles market order placement
+func (ob *OrderBook) placeMarketOrder(order *model.Order) ([]Trade, error) {
+	var trades []Trade
+	var err error
+
+	switch order.Side {
+	case model.BID:
+		trades, err = ob.takeMarketBidOrder(order)
+	case model.ASK:
+		trades, err = ob.takeMarketAskOrder(order)
+	default:
+		return nil, fmt.Errorf("invalid order side: %v", order.Side)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	ob.updateLatestPrice(trades)
+	return trades, nil
+}
+
+// MakeLimitOrder adds a new limit order to the book without attempting to match. (Maker)
+func (ob *OrderBook) makeLimitOrder(order *model.Order) error {
+	node := &model.OrderNode{Order: order}
+
+	// Add to appropriate side
+	side := ob.getSide(order.Side)
+	side.AddOrderNode(order.Price, node)
+	// Add to index for fast lookup/cancel
+	ob.addOrderIndex(node)
+
+	return nil
+}
+
+// takeLimitOrder matches a limit order against the book (Taker).
+// Attempts to match an incoming order against the book and returns the resulting trades.
+// Any unfilled portion of the incoming order will be added to the book.
 func (ob *OrderBook) takeLimitOrder(order *model.Order) ([]Trade, error) {
 	var trades []Trade
-	remainingQty := order.RemainingSize
-	opposite := ob.oppositeSide(order.Side)
+	opposite := ob.getOppositeSide(order.Side)
 
-	// loop until order fulfilled or break by stop limit
-	for remainingQty > 0 {
+	// Keep matching until order is filled or no more matches possible
+	for order.RemainingSize > 0 {
 		bestPrice, err := opposite.BestPrice()
-		if err != nil || !priceCheck(order.Side, order.Price, bestPrice) {
-			// no more order or hit stop limit, just break
-			break
+		if err != nil || !ob.canMatch(order.Side, order.Price, bestPrice) {
+			break // no more order or hit stop limit, just break
 		}
 
-		bestNode, err := opposite.PopBest()
+		trade, shouldContinue, err := ob.executeMatch(order, opposite, bestPrice)
 		if err != nil {
-			break
-		}
-
-		// Determine trade qty
-		tradeQty := remainingQty
-		if bestNode.Order.RemainingSize < remainingQty {
-			tradeQty = bestNode.Order.RemainingSize
-		}
-
-		bidOrderId, bidUserId, askOrderId, askUserId := determineOrderId(order, bestNode.Order)
-
-		// Record trade
-		trade := Trade{
-			BidOrderID: bidOrderId,
-			AskOrderID: askOrderId,
-			BidUserID:  bidUserId,
-			AskUserID:  askUserId,
-			Price:      bestPrice,
-			Size:       tradeQty,
-			Timestamp:  time.Now(),
+			return trades, err
 		}
 		trades = append(trades, trade)
 
-		// Update qty
-		bestNode.Order.RemainingSize -= tradeQty
-		remainingQty -= tradeQty
-
-		// If counter-party still has leftover, put it back into book side (price level head)
-		if bestNode.Order.RemainingSize > 0 {
-			opposite.PutToHead(bestPrice, bestNode)
-		} else {
-			// If counter-party has no leftover, remove it from orderIndex
-			_, err := ob.removeOrderIndex(bestNode.Order.ID)
-			if err != nil {
-				log.Errorf("[OrderBook] takeLimitOrder critical error, failed to remove orderIdx ID:[%s]", bestNode.Order.ID)
-			}
+		if !shouldContinue {
+			break
 		}
+
 	}
 
-	order.RemainingSize = remainingQty
-
-	// If incoming not fully filled, add remainder into book
+	// Add remaining quantity to book if any
 	if order.RemainingSize > 0 {
-		err := ob.makeLimitOrder(order)
-		if err != nil {
-			return nil, err
+		if err := ob.makeLimitOrder(order); err != nil {
+			return trades, err
 		}
 	}
 
@@ -316,67 +341,51 @@ func (ob *OrderBook) takeLimitOrder(order *model.Order) ([]Trade, error) {
 
 // Market Order Logic Section >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 func (ob *OrderBook) takeMarketAskOrder(order *model.Order) (trades []Trade, err error) {
-	opposite := ob.oppositeSide(order.Side)
+	opposite := ob.getOppositeSide(order.Side)
+
+	// Check if there's enough volume
 	if opposite.totalVolume < order.RemainingSize {
-		log.Warnf("[OrderBook] takeMarketAskOrder failed, no enough volume sit in [%s] market", ob.market.Name)
-		return nil, errors.New("not enough volume for market ask order")
+		return nil, fmt.Errorf("%w for market ask order in %s", ErrInsufficientVolume, ob.market.Name)
 	}
 
 	// loop until order fulfilled or break by stop limit
 	for order.RemainingSize > 0 {
 		bestNode, err := opposite.PopBest()
 		if err != nil {
-			log.Errorf("[OrderBook] takeMarketAskOrder critical error, "+
-				"not enough volume for market order while matching order: [%s]", order.ID)
+			log.Errorf("[OrderBook] critical error in market ask order %s: %v", order.ID, err)
 			break
 		}
 
-		oppositeOrder := bestNode.Order
-
 		// Determine trade qty
-		tradeQty := order.RemainingSize
-		if oppositeOrder.RemainingSize < tradeQty {
-			tradeQty = oppositeOrder.RemainingSize
-		}
-
-		bidOrderId, bidUserId, askOrderId, askUserId := determineOrderId(order, bestNode.Order)
-
-		// Record trade
-		trade := Trade{
-			BidOrderID: bidOrderId,
-			AskOrderID: askOrderId,
-			BidUserID:  bidUserId,
-			AskUserID:  askUserId,
-			Price:      oppositeOrder.Price,
-			Size:       tradeQty,
-			Timestamp:  time.Now(),
-		}
+		tradeQty := min(order.RemainingSize, bestNode.Order.RemainingSize)
+		trade := ob.createTrade(order, bestNode.Order, bestNode.Order.Price, tradeQty)
 		trades = append(trades, trade)
 
 		// Update qty
-		oppositeOrder.RemainingSize -= tradeQty
+		bestNode.Order.RemainingSize -= tradeQty
 		order.RemainingSize -= tradeQty
 
-		// If counter-party still has leftover, put it back into book side (price level head)
-		if oppositeOrder.RemainingSize > 0 {
-			opposite.PutToHead(oppositeOrder.Price, bestNode)
+		// Handle counter-party
+		if bestNode.Order.RemainingSize > 0 {
+			opposite.PutToHead(bestNode.Order.Price, bestNode)
 		} else {
-			// If counter-party has no leftover, remove it from orderIndex
-			_, err := ob.removeOrderIndex(oppositeOrder.ID)
-			if err != nil {
-				log.Errorf("[OrderBook] takeMarketAskOrder critical error, failed to remove orderIdx ID:[%s]", oppositeOrder.ID)
+			if _, err := ob.orderIndex.Remove(bestNode.Order.ID); err != nil {
+				log.Errorf("[OrderBook] failed to remove order from index: %s", bestNode.Order.ID)
 			}
 		}
+
 	}
 
 	return trades, err
 }
 
 func (ob *OrderBook) takeMarketBidOrder(order *model.Order) (trades []Trade, err error) {
-	opposite := ob.oppositeSide(order.Side)
+	opposite := ob.getOppositeSide(order.Side)
+
+	// Check if there's enough quote amount
 	if opposite.totalQuoteAmount < order.QuoteAmount {
-		log.Warnf("[OrderBook] takeMarketBidOrder failed, no enough volume sit in [%s] market", ob.market.Name)
-		return nil, errors.New("not enough volume for market bid order")
+		return nil, fmt.Errorf("%w for market bid order in %s",
+			ErrInsufficientVolume, ob.market.Name)
 	}
 
 	remainingQuoteAmt := order.QuoteAmount
@@ -385,8 +394,7 @@ func (ob *OrderBook) takeMarketBidOrder(order *model.Order) (trades []Trade, err
 	for remainingQuoteAmt > 0 {
 		bestNode, err := opposite.PopBest()
 		if err != nil {
-			log.Errorf("[OrderBook] takeMarketOrder critical error, "+
-				"not enough volume for market order while matching order: [%s]", order.ID)
+			log.Errorf("[OrderBook] critical error in market bid order %s: %v", order.ID, err)
 			break
 		}
 
@@ -394,7 +402,7 @@ func (ob *OrderBook) takeMarketBidOrder(order *model.Order) (trades []Trade, err
 		oppositeOrderQuoteAmt := oppositeOrder.RemainingSize * oppositeOrder.Price
 
 		// Determine trade qty
-		tradeQty := 0.0
+		var tradeQty float64
 		if remainingQuoteAmt >= oppositeOrderQuoteAmt {
 			// eat all oppositeOrder qty
 			tradeQty = oppositeOrder.RemainingSize
@@ -402,18 +410,7 @@ func (ob *OrderBook) takeMarketBidOrder(order *model.Order) (trades []Trade, err
 			tradeQty = remainingQuoteAmt / oppositeOrder.Price
 		}
 
-		bidOrderId, bidUserId, askOrderId, askUserId := determineOrderId(order, bestNode.Order)
-
-		// Record trade
-		trade := Trade{
-			BidOrderID: bidOrderId,
-			AskOrderID: askOrderId,
-			BidUserID:  bidUserId,
-			AskUserID:  askUserId,
-			Price:      oppositeOrder.Price,
-			Size:       tradeQty,
-			Timestamp:  time.Now(),
-		}
+		trade := ob.createTrade(order, oppositeOrder, oppositeOrder.Price, tradeQty)
 		trades = append(trades, trade)
 
 		// Update qty
@@ -426,9 +423,8 @@ func (ob *OrderBook) takeMarketBidOrder(order *model.Order) (trades []Trade, err
 			opposite.PutToHead(oppositeOrder.Price, bestNode)
 		} else {
 			// If counter-party has no leftover, remove it from orderIndex
-			_, err := ob.removeOrderIndex(oppositeOrder.ID)
-			if err != nil {
-				log.Errorf("[OrderBook] takeMarketBidOrder critical error, failed to remove orderIdx ID:[%s]", oppositeOrder.ID)
+			if _, err := ob.removeOrderIndex(oppositeOrder.ID); err != nil {
+				log.Errorf("[OrderBook] failed to remove order from index: %s", oppositeOrder.ID)
 			}
 		}
 	}
@@ -437,23 +433,6 @@ func (ob *OrderBook) takeMarketBidOrder(order *model.Order) (trades []Trade, err
 }
 
 // Market Order Logic Section <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-// determineOrderId return (bidOrderId, bidUserId, askOrderId, askUserId)
-func determineOrderId(order, oppositeOrder *model.Order) (string, string, string, string) {
-	if order.Side == model.BID {
-		return order.ID, order.UserID, oppositeOrder.ID, oppositeOrder.UserID
-	} else {
-		return oppositeOrder.ID, oppositeOrder.UserID, order.ID, order.UserID
-	}
-}
-
-func (ob *OrderBook) oppositeSide(side model.Side) *BookSide {
-	if side == model.BID {
-		return ob.askSide
-	} else {
-		return ob.bidSide
-	}
-}
 
 func (ob *OrderBook) TotalAskVolume() float64 {
 	ob.obMu.RLock()
@@ -532,10 +511,64 @@ func (ob *OrderBook) GetAssets() (string, string) {
 	return ob.market.BaseAsset, ob.market.QuoteAsset
 }
 
-func priceCheck(orderSide model.Side, orderPrice, bestPrice float64) bool {
+// canMatch checks if an order can match at the given price
+func (ob *OrderBook) canMatch(orderSide model.Side, orderPrice, bestPrice float64) bool {
 	if orderSide == model.BID {
 		return orderPrice >= bestPrice
-	} else {
-		return orderPrice <= bestPrice
 	}
+	return orderPrice <= bestPrice
+}
+
+// executeMatch executes a single match between orders
+func (ob *OrderBook) executeMatch(order *model.Order, opposite *BookSide, bestPrice float64) (Trade, bool, error) {
+	bestNode, err := opposite.PopBest()
+	if err != nil {
+		return Trade{}, false, err
+	}
+
+	// Calculate trade quantity
+	tradeQty := min(order.RemainingSize, bestNode.Order.RemainingSize)
+
+	// Create trade
+	trade := ob.createTrade(order, bestNode.Order, bestPrice, tradeQty)
+
+	// Update remaining quantities
+	bestNode.Order.RemainingSize -= tradeQty
+	order.RemainingSize -= tradeQty
+
+	// Handle counter-party order
+	if bestNode.Order.RemainingSize > 0 {
+		// Put back to front of price level
+		opposite.PutToHead(bestPrice, bestNode)
+	} else {
+		// Remove from index
+		if _, err := ob.orderIndex.Remove(bestNode.Order.ID); err != nil {
+			log.Errorf("[OrderBook] failed to remove order from index: %s", bestNode.Order.ID)
+		}
+	}
+
+	return trade, true, nil
+}
+
+// createTrade creates a trade record
+func (ob *OrderBook) createTrade(order1, order2 *model.Order, price, size float64) Trade {
+	bidOrderID, bidUserID, askOrderID, askUserID := ob.determineTradeIDs(order1, order2)
+
+	return Trade{
+		BidOrderID: bidOrderID,
+		AskOrderID: askOrderID,
+		BidUserID:  bidUserID,
+		AskUserID:  askUserID,
+		Price:      price,
+		Size:       size,
+		Timestamp:  time.Now(),
+	}
+}
+
+// determineTradeIDs determines bid/ask order IDs and user IDs
+func (ob *OrderBook) determineTradeIDs(order1, order2 *model.Order) (bidOrder, bidUserID, askOrderID, askUserID string) {
+	if order1.Side == model.BID {
+		return order1.ID, order1.UserID, order2.ID, order2.UserID
+	}
+	return order2.ID, order2.UserID, order1.ID, order1.UserID
 }

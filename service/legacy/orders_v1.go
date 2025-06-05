@@ -191,7 +191,7 @@ package legacy
 //
 //		// 6-2. update counterparty order
 //		counterSide := order.CounterSide()
-//		counterOrderID := trade.GeOrderIDBySide(counterSide)
+//		counterOrderID := trade.GetOrderIDBySide(counterSide)
 //
 //		err = s.updateCounterOrder(tx, &trade, counterOrderID)
 //

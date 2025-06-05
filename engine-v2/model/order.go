@@ -38,6 +38,39 @@ const (
 	ORDER_STATUS_CANCELED OrderStatus = "CANCELED"
 )
 
+func (ot OrderType) String() string {
+	switch ot {
+	case LIMIT:
+		return "LIMIT"
+	case MARKET:
+		return "MARKET"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+func (si Side) String() string {
+	switch si {
+	case BID:
+		return "BID"
+	case ASK:
+		return "ASK"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+func (mo Mode) String() string {
+	switch mo {
+	case MAKER:
+		return "MAKER"
+	case TAKER:
+		return "TAKER"
+	default:
+		return "UNKNOWN"
+	}
+}
+
 type Order struct {
 	ID            string
 	UserID        string
