@@ -56,6 +56,9 @@ Response-Body:
             "avg_dealt_price": 3100, // avg dealt price
             "type": 0, // 0: limit order, 1: market order
             "mode": 1, // 0: maker, 1: taker
+            "fees": 0.0006451612903225806, // trading fees
+            "fee_asset": "ETH", // paid fee asset
+            "fee_rate": "0.2000%",
             "status": "FILLED",
             "created_at": 1749024658911,
             "updated_at": 1749024658911
