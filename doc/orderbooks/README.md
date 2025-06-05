@@ -23,9 +23,9 @@ Response-Body:
 {
     "code": "0000000",
     "message": "success",
-    "timestamp": 1749024755669,
+    "timestamp": 1749138136690,
     "data": {
-        "BidSide": [
+        "bid_side": [
             {
                 "price": 3000,
                 "volume": 10
@@ -47,10 +47,10 @@ Response-Body:
                 "volume": 10
             }
         ],
-        "AskSide": [
+        "ask_side": [
             {
                 "price": 3100,
-                "volume": 9.9
+                "volume": 10
             },
             {
                 "price": 3200,
@@ -69,7 +69,7 @@ Response-Body:
                 "volume": 10
             }
         ],
-        "LatestPrice": 3100
+        "latest_price": 0
     }
 }
 ```
