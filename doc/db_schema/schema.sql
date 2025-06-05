@@ -56,6 +56,7 @@ create table trades
 (
     id           INTEGER
         PRIMARY KEY AUTOINCREMENT,
+    market       TEXT     not null,
     ask_order_id TEXT     NOT NULL,
     bid_order_id TEXT     NOT NULL,
     price        REAL     NOT NULL,
@@ -69,6 +70,6 @@ create table trades
 CREATE INDEX idx_trades_ask_order_id ON trades(ask_order_id);
 CREATE INDEX idx_trades_bid_order_id ON trades(bid_order_id);
 -- Time-based trade queries
-CREATE INDEX idx_trades_timestamp ON trades(timestamp);
+CREATE INDEX idx_trades_timestamp ON trades(market, timestamp);
 -- Price-based queries (for analytics)
-CREATE INDEX idx_trades_price ON trades(price);
+CREATE INDEX idx_trades_price ON trades(market, price);

@@ -77,8 +77,8 @@ type Order struct {
 	Side          Side
 	Price         float64
 	OriginalSize  float64
-	RemainingSize float64 // only market bid order
-	QuoteAmount   float64
+	RemainingSize float64
+	QuoteAmount   float64 // only market bid order
 	Mode          Mode
 	FeeRate       float64
 	Timestamp     time.Time

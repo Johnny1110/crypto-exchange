@@ -47,8 +47,10 @@ type IOrderRepository interface {
 	SyncTradeMatchingResult(ctx context.Context, db DBExecutor, orderId string, decreasingSize, dealtQuoteAmount float64, fees float64) error
 	CancelOrder(ctx context.Context, db DBExecutor, orderId string, remainingSize float64) error
 	UpdateOriginalSize(ctx context.Context, db DBExecutor, orderId string, originalSize float64) error
+	GetOrdersByMarketAndStatuses(ctx context.Context, db *sql.DB, market string, statuses []model.OrderStatus) ([]*dto.Order, error)
 }
 
 type ITradeRepository interface {
 	BatchInsert(ctx context.Context, db DBExecutor, trades []book.Trade) error
+	GetMarketLatestPrice(ctx context.Context, db DBExecutor, market string) (float64, error)
 }

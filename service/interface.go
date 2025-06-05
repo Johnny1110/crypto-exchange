@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/johnny1110/crypto-exchange/dto"
 	"github.com/johnny1110/crypto-exchange/engine-v2/book"
+	"github.com/johnny1110/crypto-exchange/engine-v2/model"
 )
 
 type IUserService interface {
@@ -27,6 +28,7 @@ type IOrderService interface {
 	PlaceOrder(ctx context.Context, market string, user *dto.User, req *dto.OrderReq) (*dto.PlaceOrderResult, error)
 	QueryOrder(ctx context.Context, userId string, isOpenOrder bool) ([]*dto.Order, error)
 	CancelOrder(ctx context.Context, market, userID, orderID string) (*dto.Order, error)
+	QueryOrdersByMarketAndStatuses(ctx context.Context, market string, statuses []model.OrderStatus) ([]*dto.Order, error)
 }
 
 type IAdminService interface {

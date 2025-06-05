@@ -328,3 +328,67 @@ func (o orderRepository) UpdateOriginalSize(ctx context.Context, db repository.D
 
 	return nil
 }
+
+func (o orderRepository) GetOrdersByMarketAndStatuses(ctx context.Context, db *sql.DB, market string, statuses []model.OrderStatus) ([]*dto.Order, error) {
+	if len(statuses) == 0 {
+		return []*dto.Order{}, nil
+	}
+
+	// create IN prepare statement
+	placeholders := make([]string, len(statuses))
+	args := make([]interface{}, len(statuses)+1)
+	args[0] = market
+
+	for i, status := range statuses {
+		placeholders[i] = "?"
+		args[i+1] = string(status)
+	}
+
+	query := fmt.Sprintf(`SELECT id, user_id, market, side, price, original_size, remaining_size, 
+		quote_amount, avg_dealt_price, type, mode, status, created_at, updated_at, fee_asset, fee_rate, fees
+		FROM orders WHERE market = ? AND status IN (%s) 
+		ORDER BY created_at DESC`, strings.Join(placeholders, ","))
+
+	rows, err := db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query orders: %w", err)
+	}
+	defer rows.Close()
+
+	var orders []*dto.Order
+	for rows.Next() {
+		order := &dto.Order{}
+
+		err := rows.Scan(
+			&order.ID,
+			&order.UserID,
+			&order.Market,
+			&order.Side,
+			&order.Price,
+			&order.OriginalSize,
+			&order.RemainingSize,
+			&order.QuoteAmount,
+			&order.AvgDealtPrice,
+			&order.Type,
+			&order.Mode,
+			&order.Status,
+			&order.CreatedAt,
+			&order.UpdatedAt,
+			&order.FeeAsset,
+			&order.FeeRate,
+			&order.Fees,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan order: %w", err)
+		}
+
+		orders = append(orders, order)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return orders, nil
+}
