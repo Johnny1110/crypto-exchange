@@ -19,7 +19,7 @@ VALUES ('1', 'USDT', 10000000, 0),
 
 -- Create Balances for Maker Account
 INSERT INTO balances(user_id,asset,available,locked)
-VALUES ('U01_the_GOD', 'USDT', 100000, 0),
+VALUES ('U01_the_GOD', 'USDT', 300000, 0),
        ('U01_the_GOD', 'BTC', 0, 0),
        ('U01_the_GOD', 'ETH', 10, 0),
        ('U01_the_GOD', 'DOT', 10, 0);

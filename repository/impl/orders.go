@@ -230,7 +230,7 @@ func (o orderRepository) GetOrdersByUserIdAndStatuses(ctx context.Context, db re
 	return orders, nil
 }
 
-func (o orderRepository) SyncTradeMatchingResult(ctx context.Context, db repository.DBExecutor, orderId string, decreasingSize, dealtQuoteAmount float64) error {
+func (o orderRepository) SyncTradeMatchingResult(ctx context.Context, db repository.DBExecutor, orderId string, decreasingSize, dealtQuoteAmount float64, fees float64) error {
 	query := `UPDATE orders SET 
 		remaining_size = remaining_size - ?, 
 		quote_amount = quote_amount + ?,
@@ -240,7 +240,8 @@ func (o orderRepository) SyncTradeMatchingResult(ctx context.Context, db reposit
 			                  	WHEN remaining_size - ? = 0 THEN ?
 								WHEN remaining_size - ? < original_size THEN ?
 								ELSE status END
-                , updated_at = ?
+                   , fees = fees + ?
+                   , updated_at = ?
 		WHERE id = ?`
 
 	result, err := db.ExecContext(ctx, query,
@@ -253,6 +254,7 @@ func (o orderRepository) SyncTradeMatchingResult(ctx context.Context, db reposit
 		model.ORDER_STATUS_FILLED,
 		decreasingSize,
 		model.ORDER_STATUS_PARTIAL,
+		fees,
 		time.Now(),
 		orderId,
 	)

@@ -185,13 +185,12 @@ func (s *orderService) executeOrderPlacementPhase(ctx context.Context, orderCtx 
 	})
 }
 
-// TODO: calculate fees
 func (s *orderService) executeTradeSettlementPhase(ctx context.Context, orderCtx *dto.PlaceOrderContext) error {
 	if len(orderCtx.Trades) == 0 {
 		return nil // No trades to settle
 	}
 
-	settlementResult, err := serviceHelper.ProcessTradeSettlement(orderCtx.OrderDTO, orderCtx.Trades)
+	settlementResult, err := serviceHelper.ProcessTradeSettlement(orderCtx)
 	if err != nil {
 		return fmt.Errorf("failed to process trade settlement: %w", err)
 	}
@@ -199,7 +198,7 @@ func (s *orderService) executeTradeSettlementPhase(ctx context.Context, orderCtx
 	return WithTx(ctx, s.db, func(tx *sql.Tx) error {
 		// Update orders
 		for _, orderUpdate := range settlementResult.OrderUpdates {
-			if err := s.orderRepo.SyncTradeMatchingResult(ctx, tx, orderUpdate.OrderID, orderUpdate.RemainingSizeDecreasing, orderUpdate.DealtQuoteAmountIncreasing); err != nil {
+			if err := s.orderRepo.SyncTradeMatchingResult(ctx, tx, orderUpdate.OrderID, orderUpdate.RemainingSizeDecreasing, orderUpdate.DealtQuoteAmountIncreasing, orderUpdate.FeesIncreasing); err != nil {
 				return fmt.Errorf("failed to sync trade matching result for order %s: %w", orderUpdate.OrderID, err)
 			}
 		}

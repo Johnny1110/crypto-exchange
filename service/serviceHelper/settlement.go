@@ -12,6 +12,7 @@ type OrderUpdateData struct {
 	OrderID                    string
 	RemainingSizeDecreasing    float64
 	DealtQuoteAmountIncreasing float64
+	FeesIncreasing             float64
 }
 
 // UserSettlementData represents settlement data for a user's assets
@@ -24,14 +25,21 @@ type UserSettlementData struct {
 
 // TradeSettlementResult encapsulates the result of trade settlement processing
 type TradeSettlementResult struct {
+	BaseAsset       string
+	QuoteAsset      string
 	OrderUpdates    []*OrderUpdateData
 	UserSettlements map[string]*UserSettlementData
 	TotalDealtAmt   float64
 	TotalDealtSize  float64
+	TotalBaseFees   float64 // add to settings margin account balances
+	TotalQuoteFees  float64 // add to settings margin account balances
 }
 
 // ProcessTradeSettlement handles the core logic for processing trades and updating balances
-func ProcessTradeSettlement(eatenOrder *dto.Order, trades []book.Trade) (*TradeSettlementResult, error) {
+func ProcessTradeSettlement(ctx *dto.PlaceOrderContext) (*TradeSettlementResult, error) {
+	eatenOrder := ctx.OrderDTO
+	trades := ctx.Trades
+
 	if eatenOrder == nil {
 		return nil, fmt.Errorf("eaten order cannot be nil")
 	}
@@ -39,6 +47,8 @@ func ProcessTradeSettlement(eatenOrder *dto.Order, trades []book.Trade) (*TradeS
 	result := &TradeSettlementResult{
 		OrderUpdates:    make([]*OrderUpdateData, 0, len(trades)+1),
 		UserSettlements: initializeUserSettlements(trades),
+		BaseAsset:       ctx.Assets.BaseAsset,
+		QuoteAsset:      ctx.Assets.QuoteAsset,
 	}
 
 	// Process each trade
@@ -92,17 +102,17 @@ func (r *TradeSettlementResult) processIndividualTrade(trade book.Trade, eatenOr
 	askSettlement := r.UserSettlements[trade.AskUserID]
 
 	// Process bid user balances
-	r.processBidUserBalances(bidSettlement, trade, tradeQuoteAmount, eatenOrder)
+	bidFees := r.processBidUserBalances(bidSettlement, trade, tradeQuoteAmount, eatenOrder)
 
 	// Process ask user balances
-	r.processAskUserBalances(askSettlement, trade, tradeQuoteAmount)
+	askFees := r.processAskUserBalances(askSettlement, trade, tradeQuoteAmount)
 
 	// Add opposite order update
-	r.addOppositeOrderUpdate(trade, eatenOrder, tradeQuoteAmount)
+	r.addOppositeOrderUpdate(trade, eatenOrder, tradeQuoteAmount, bidFees, askFees)
 }
 
-// processBidUserBalances handles bid user's balance updates
-func (r *TradeSettlementResult) processBidUserBalances(bidSettlement *UserSettlementData, trade book.Trade, tradeQuoteAmount float64, eatenOrder *dto.Order) {
+// processBidUserBalances handles bid user's balance updates and return bid fees (Base Asset)
+func (r *TradeSettlementResult) processBidUserBalances(bidSettlement *UserSettlementData, trade book.Trade, tradeQuoteAmount float64, eatenOrder *dto.Order) (fees float64) {
 	// Handle quote asset (what bid user pays)
 	if eatenOrder.Type == model.LIMIT && eatenOrder.Side == model.BID {
 		// If processing bid is incoming eatenOrder.
@@ -115,32 +125,48 @@ func (r *TradeSettlementResult) processBidUserBalances(bidSettlement *UserSettle
 		bidSettlement.QuoteAssetLocked -= tradeQuoteAmount
 	}
 
-	// Add base asset received
-	bidSettlement.BaseAssetAvailable += trade.Size
+	// Calculate fees and accumulate to sum.
+	bidFees := trade.Size * trade.BidFeeRate
+	r.TotalBaseFees += bidFees
+
+	// Add base asset received (deduct fees)
+	bidSettlement.BaseAssetAvailable += trade.Size - bidFees
+
+	return bidFees
 }
 
-// processAskUserBalances handles ask user's balance updates
-func (r *TradeSettlementResult) processAskUserBalances(settlement *UserSettlementData, trade book.Trade, tradeQuoteAmount float64) {
+// processAskUserBalances handles ask user's balance updates and return ask fees (Quote Asset)
+func (r *TradeSettlementResult) processAskUserBalances(settlement *UserSettlementData, trade book.Trade, tradeQuoteAmount float64) (fees float64) {
 	// Remove locked base asset (what ask user sells)
 	settlement.BaseAssetLocked -= trade.Size
 
+	// Calculate fees and accumulate to sum.
+	askFees := tradeQuoteAmount * trade.AskFeeRate
+	r.TotalQuoteFees += askFees
+
 	// Add quote asset received
-	settlement.QuoteAssetAvailable += tradeQuoteAmount
+	settlement.QuoteAssetAvailable += tradeQuoteAmount - askFees
+
+	return askFees
 }
 
 // addOppositeOrderUpdate adds update data for the order opposite to the eaten order
-func (r *TradeSettlementResult) addOppositeOrderUpdate(trade book.Trade, eatenOrder *dto.Order, tradeQuoteAmount float64) {
+func (r *TradeSettlementResult) addOppositeOrderUpdate(trade book.Trade, eatenOrder *dto.Order, tradeQuoteAmount, bidFees, askFees float64) {
 	var oppositeOrderId string
+	var feeIncreasing float64
 	if eatenOrder.Side == model.BID {
 		oppositeOrderId = trade.AskOrderID
+		feeIncreasing = askFees
 	} else {
 		oppositeOrderId = trade.BidOrderID
+		feeIncreasing = bidFees
 	}
 
 	r.OrderUpdates = append(r.OrderUpdates, &OrderUpdateData{
 		OrderID:                    oppositeOrderId,
 		RemainingSizeDecreasing:    trade.Size,
 		DealtQuoteAmountIncreasing: tradeQuoteAmount,
+		FeesIncreasing:             feeIncreasing,
 	})
 }
 
@@ -154,15 +180,25 @@ func (r *TradeSettlementResult) addEatenOrderUpdate(eatenOrder *dto.Order) {
 			OrderID:                    eatenOrder.ID,
 			RemainingSizeDecreasing:    0.0,
 			DealtQuoteAmountIncreasing: 0.0,
+			FeesIncreasing:             r.TotalBaseFees,
 		}
 	} else {
 		// Limit orders and market sell orders need full updates
+		var fees float64
+		if eatenOrder.Side == model.BID {
+			fees = r.TotalBaseFees
+		} else {
+			fees = r.TotalQuoteFees
+		}
+
 		update = &OrderUpdateData{
 			OrderID:                    eatenOrder.ID,
 			RemainingSizeDecreasing:    r.TotalDealtSize,
 			DealtQuoteAmountIncreasing: r.TotalDealtAmt,
+			FeesIncreasing:             fees,
 		}
 	}
+	eatenOrder.Fees += update.FeesIncreasing
 
 	r.OrderUpdates = append(r.OrderUpdates, update)
 }
