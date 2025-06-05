@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/johnny1110/crypto-exchange/dto"
-	"github.com/johnny1110/crypto-exchange/engine-v2/book"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
 	"github.com/johnny1110/crypto-exchange/repository"
 	"github.com/johnny1110/crypto-exchange/service"
@@ -58,35 +57,35 @@ func (as adminService) TestAutoMakeMarket(ctx context.Context) error {
 	// make 5 bid orders
 	_, _ = as.orderService.PlaceOrder(ctx, market, "1", &dto.OrderReq{
 		Side:      model.BID,
-		OrderType: book.LIMIT,
+		OrderType: model.LIMIT,
 		Mode:      model.MAKER,
 		Price:     3000,
 		Size:      10,
 	})
 	_, _ = as.orderService.PlaceOrder(ctx, market, "1", &dto.OrderReq{
 		Side:      model.BID,
-		OrderType: book.LIMIT,
+		OrderType: model.LIMIT,
 		Mode:      model.MAKER,
 		Price:     2900,
 		Size:      10,
 	})
 	_, _ = as.orderService.PlaceOrder(ctx, market, "1", &dto.OrderReq{
 		Side:      model.BID,
-		OrderType: book.LIMIT,
+		OrderType: model.LIMIT,
 		Mode:      model.MAKER,
 		Price:     2800,
 		Size:      10,
 	})
 	_, _ = as.orderService.PlaceOrder(ctx, market, "1", &dto.OrderReq{
 		Side:      model.BID,
-		OrderType: book.LIMIT,
+		OrderType: model.LIMIT,
 		Mode:      model.MAKER,
 		Price:     2700,
 		Size:      10,
 	})
 	_, _ = as.orderService.PlaceOrder(ctx, market, "1", &dto.OrderReq{
 		Side:      model.BID,
-		OrderType: book.LIMIT,
+		OrderType: model.LIMIT,
 		Mode:      model.MAKER,
 		Price:     2600,
 		Size:      10,
@@ -95,35 +94,35 @@ func (as adminService) TestAutoMakeMarket(ctx context.Context) error {
 	// make 5 ask orders
 	_, _ = as.orderService.PlaceOrder(ctx, market, "1", &dto.OrderReq{
 		Side:      model.ASK,
-		OrderType: book.LIMIT,
+		OrderType: model.LIMIT,
 		Mode:      model.MAKER,
 		Price:     3500,
 		Size:      10,
 	})
 	_, _ = as.orderService.PlaceOrder(ctx, market, "1", &dto.OrderReq{
 		Side:      model.ASK,
-		OrderType: book.LIMIT,
+		OrderType: model.LIMIT,
 		Mode:      model.MAKER,
 		Price:     3400,
 		Size:      10,
 	})
 	_, _ = as.orderService.PlaceOrder(ctx, market, "1", &dto.OrderReq{
 		Side:      model.ASK,
-		OrderType: book.LIMIT,
+		OrderType: model.LIMIT,
 		Mode:      model.MAKER,
 		Price:     3300,
 		Size:      10,
 	})
 	_, _ = as.orderService.PlaceOrder(ctx, market, "1", &dto.OrderReq{
 		Side:      model.ASK,
-		OrderType: book.LIMIT,
+		OrderType: model.LIMIT,
 		Mode:      model.MAKER,
 		Price:     3200,
 		Size:      10,
 	})
 	_, _ = as.orderService.PlaceOrder(ctx, market, "1", &dto.OrderReq{
 		Side:      model.ASK,
-		OrderType: book.LIMIT,
+		OrderType: model.LIMIT,
 		Mode:      model.MAKER,
 		Price:     3100,
 		Size:      10,

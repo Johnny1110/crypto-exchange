@@ -6,7 +6,13 @@ import (
 
 type Side int
 type Mode int
+type OrderType int
 type OrderStatus string
+
+const (
+	LIMIT OrderType = iota
+	MARKET
+)
 
 const (
 	BID Side = iota

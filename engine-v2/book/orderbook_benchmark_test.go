@@ -20,7 +20,7 @@ func BenchmarkMakeLimitOrder(b *testing.B) {
 			1.0, 0,
 			model.MAKER,
 		)
-		if _, err := ob.PlaceOrder(LIMIT, order); err != nil {
+		if _, err := ob.PlaceOrder(model.LIMIT, order); err != nil {
 			b.Fatalf("MakeLimitOrder failed: %v", err)
 		}
 	}
@@ -40,7 +40,7 @@ func BenchmarkTakeLimitOrder_FullMatch(b *testing.B) {
 			1.0, 0,
 			model.MAKER,
 		)
-		ob.PlaceOrder(LIMIT, order)
+		ob.PlaceOrder(model.LIMIT, order)
 	}
 
 	b.ResetTimer()
@@ -53,7 +53,7 @@ func BenchmarkTakeLimitOrder_FullMatch(b *testing.B) {
 			1.0, 0,
 			model.TAKER,
 		)
-		_, err := ob.PlaceOrder(LIMIT, taker)
+		_, err := ob.PlaceOrder(model.LIMIT, taker)
 		if err != nil {
 			b.Fatalf("TakeLimitOrder full match failed: %v", err)
 		}
@@ -76,7 +76,7 @@ func BenchmarkTakeMarketOrder(b *testing.B) {
 			size, 0,
 			model.MAKER,
 		)
-		ob.PlaceOrder(LIMIT, order)
+		ob.PlaceOrder(model.LIMIT, order)
 	}
 
 	b.ResetTimer()
@@ -89,7 +89,7 @@ func BenchmarkTakeMarketOrder(b *testing.B) {
 			0.001, 0,
 			model.TAKER,
 		)
-		_, err := ob.PlaceOrder(MARKET, taker)
+		_, err := ob.PlaceOrder(model.MARKET, taker)
 		if err != nil {
 			b.Fatalf("TakeMarketOrder failed: %v", err)
 		}
@@ -110,7 +110,7 @@ func BenchmarkCancelOrder(b *testing.B) {
 			1.0, 0,
 			model.MAKER,
 		)
-		ob.PlaceOrder(LIMIT, orders[i])
+		ob.PlaceOrder(model.LIMIT, orders[i])
 	}
 
 	b.ResetTimer()

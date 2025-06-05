@@ -50,7 +50,7 @@ func (e *MatchingEngine) Markets() []string {
 	return markets
 }
 
-func (e *MatchingEngine) PlaceOrder(market string, orderType book.OrderType, order *model.Order) ([]book.Trade, error) {
+func (e *MatchingEngine) PlaceOrder(market string, orderType model.OrderType, order *model.Order) ([]book.Trade, error) {
 	ob, err := e.GetOrderBook(market)
 	if err != nil {
 		return nil, err

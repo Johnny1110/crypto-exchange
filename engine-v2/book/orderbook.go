@@ -11,13 +11,6 @@ import (
 	"time"
 )
 
-type OrderType int
-
-const (
-	LIMIT OrderType = iota
-	MARKET
-)
-
 // Trade (Match) represents a filled trade between two orders.
 type Trade struct {
 	BidOrderID string
@@ -159,7 +152,7 @@ func (ob *OrderBook) RefreshSnapshot() {
 }
 
 // PlaceOrder place order into order book, support LIMIT/MAKER, LIMIT/TAKER and MARKET 3 kind of scenario
-func (ob *OrderBook) PlaceOrder(orderType OrderType, order *model.Order) ([]Trade, error) {
+func (ob *OrderBook) PlaceOrder(orderType model.OrderType, order *model.Order) ([]Trade, error) {
 	ob.obMu.Lock()
 	defer ob.obMu.Unlock()
 
@@ -172,7 +165,7 @@ func (ob *OrderBook) PlaceOrder(orderType OrderType, order *model.Order) ([]Trad
 	var err error
 
 	switch orderType {
-	case LIMIT:
+	case model.LIMIT:
 		// LIMIT-Maker, place order into book and return directly
 		if order.Mode == model.MAKER {
 			log.Infof("[OrderBook] PlaceOrder (maker) LIMIT order, orderID:[%s]", order.ID)
@@ -184,7 +177,7 @@ func (ob *OrderBook) PlaceOrder(orderType OrderType, order *model.Order) ([]Trad
 			trades, err = ob.takeLimitOrder(order)
 		}
 		break
-	case MARKET:
+	case model.MARKET:
 		// MARKET always will be Taker
 		log.Infof("[OrderBook] PlaceOrder (taker) MARKET order, orderID:[%s]", order.ID)
 		if order.Side == model.BID {

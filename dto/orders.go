@@ -3,7 +3,6 @@ package dto
 import (
 	"encoding/json"
 	"github.com/google/uuid"
-	"github.com/johnny1110/crypto-exchange/engine-v2/book"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
 	"time"
 )
@@ -18,7 +17,7 @@ type Order struct {
 	RemainingSize float64           `json:"remaining_size"`
 	QuoteAmount   float64           `json:"quote_amount"`
 	AvgDealtPrice float64           `json:"avg_dealt_price"`
-	Type          book.OrderType    `json:"type"`
+	Type          model.OrderType   `json:"type"`
 	Mode          model.Mode        `json:"mode"`
 	Status        model.OrderStatus `json:"status"`
 	CreatedAt     time.Time         `json:"-"`
@@ -79,7 +78,7 @@ func (b *OrderBuilder) WithSide(side model.Side) *OrderBuilder {
 	return b
 }
 
-func (b *OrderBuilder) WithType(orderType book.OrderType) *OrderBuilder {
+func (b *OrderBuilder) WithType(orderType model.OrderType) *OrderBuilder {
 	b.order.Type = orderType
 	return b
 }

@@ -104,7 +104,7 @@ func (r *TradeSettlementResult) processIndividualTrade(trade book.Trade, eatenOr
 // processBidUserBalances handles bid user's balance updates
 func (r *TradeSettlementResult) processBidUserBalances(bidSettlement *UserSettlementData, trade book.Trade, tradeQuoteAmount float64, eatenOrder *dto.Order) {
 	// Handle quote asset (what bid user pays)
-	if eatenOrder.Type == book.LIMIT && eatenOrder.Side == model.BID {
+	if eatenOrder.Type == model.LIMIT && eatenOrder.Side == model.BID {
 		// If processing bid is incoming eatenOrder.
 		// For limit buy orders, unlock at order price and refund difference
 		unlockAmount := eatenOrder.Price * trade.Size
@@ -148,7 +148,7 @@ func (r *TradeSettlementResult) addOppositeOrderUpdate(trade book.Trade, eatenOr
 func (r *TradeSettlementResult) addEatenOrderUpdate(eatenOrder *dto.Order) {
 	var update *OrderUpdateData
 
-	if eatenOrder.Type == book.MARKET && eatenOrder.Side == model.BID {
+	if eatenOrder.Type == model.MARKET && eatenOrder.Side == model.BID {
 		// Market bid orders don't need size/amount updates as they're already processed
 		update = &OrderUpdateData{
 			OrderID:                    eatenOrder.ID,

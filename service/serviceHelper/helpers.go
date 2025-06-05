@@ -48,9 +48,9 @@ func DetermineFreezeValue(req *dto.OrderReq, baseAsset, quoteAsset string) (stri
 
 func calculateBidFreezeValue(req *dto.OrderReq, quoteAsset string) (string, float64) {
 	switch req.OrderType {
-	case book.LIMIT:
+	case model.LIMIT:
 		return quoteAsset, req.Price * req.Size
-	case book.MARKET:
+	case model.MARKET:
 		return quoteAsset, req.QuoteAmount
 	default:
 		return quoteAsset, 0
@@ -62,7 +62,7 @@ func NewLimitOrderDtoByOrderReq(market, userID string, req *dto.OrderReq) *dto.O
 		WithMarket(market).
 		WithUser(userID).
 		WithSide(req.Side).
-		WithType(book.LIMIT).
+		WithType(model.LIMIT).
 		WithMode(req.Mode).
 		WithPrice(req.Price).
 		WithSize(req.Size).
@@ -74,7 +74,7 @@ func NewMarketOrderDtoByOrderReq(market, userID string, req *dto.OrderReq) *dto.
 		WithMarket(market).
 		WithUser(userID).
 		WithSide(req.Side).
-		WithType(book.MARKET).
+		WithType(model.MARKET).
 		WithMode(model.TAKER).
 		WithPrice(-1) // Market orders don't have a specific price
 

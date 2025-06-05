@@ -136,11 +136,11 @@ func (s *MarketOrderStrategy) Execute(ctx context.Context, service *orderService
 	return service.executeOrderPlacement(ctx, orderCtx, true)
 }
 
-func (s *orderService) getOrderPlacementStrategy(orderType book.OrderType) (OrderPlacementStrategy, error) {
+func (s *orderService) getOrderPlacementStrategy(orderType model.OrderType) (OrderPlacementStrategy, error) {
 	switch orderType {
-	case book.LIMIT:
+	case model.LIMIT:
 		return &LimitOrderStrategy{}, nil
-	case book.MARKET:
+	case model.MARKET:
 		return &MarketOrderStrategy{}, nil
 	default:
 		log.Errorf("[getOrderPlacementStrategy] failed, unknown order type: %v", orderType)
@@ -348,16 +348,16 @@ func validatePlacingOrderReq(userID, market string, req *dto.OrderReq) error {
 
 	// Validate Bid orders
 	if req.Side == model.BID {
-		if req.OrderType == book.MARKET && req.QuoteAmount <= 0 {
+		if req.OrderType == model.MARKET && req.QuoteAmount <= 0 {
 			return errors.New("bid market order quote amount must be greater than zero")
 		}
-		if req.OrderType == book.LIMIT && req.Size <= 0 {
+		if req.OrderType == model.LIMIT && req.Size <= 0 {
 			return errors.New("bid limit order size must be greater than zero")
 		}
 	}
 
 	// Validate Limit orders
-	if req.OrderType == book.LIMIT && req.Price <= 0 {
+	if req.OrderType == model.LIMIT && req.Price <= 0 {
 		return errors.New("limit order price must be greater than zero")
 	}
 
