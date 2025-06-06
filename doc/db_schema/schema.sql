@@ -6,7 +6,8 @@ CREATE TABLE users
     password_hash TEXT        NOT NULL,
     vip_level     INTEGER DEFAULT 1,
     maker_fee      REAL NOT NULL,
-    taker_fee      REAL NOT NULL
+    taker_fee      REAL NOT NULL,
+    created_at     DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 DROP TABLE IF EXISTS balances;

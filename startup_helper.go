@@ -7,7 +7,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/johnny1110/crypto-exchange/container"
 	"github.com/johnny1110/crypto-exchange/dto"
-	"github.com/johnny1110/crypto-exchange/engine-v2/market"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
 	"github.com/labstack/gommon/log"
 	"io/ioutil"
@@ -75,15 +74,6 @@ func executeSQLFileWithTransaction(db *sql.DB, filePath string) error {
 	return nil
 }
 
-// initMarkets define markets here.
-func initMarkets() []*market.MarketInfo {
-	btcMarket := market.NewMarketInfo("BTC-USDT", "BTC", "USDT")
-	ethMarket := market.NewMarketInfo("ETH-USDT", "ETH", "USDT")
-	dotMarket := market.NewMarketInfo("DOT-USDT", "DOT", "USDT")
-
-	return []*market.MarketInfo{btcMarket, ethMarket, dotMarket}
-}
-
 func recoverOrderBook(c *container.Container) error {
 	log.Infof("[RecoverOrderBook] start")
 	markets := c.MatchingEngine.Markets()
@@ -120,6 +110,18 @@ func convertOrderDTOsToEngineOrders(orderDTOs []*dto.Order) []*model.Order {
 		orders = append(orders, o.ToEngineOrder())
 	}
 	return orders
+}
+
+func startUpAllScheduler(c *container.Container) {
+	err := c.OrderBookSnapshotScheduler.Start()
+	if err != nil {
+		panic(err)
+	}
+
+	err = c.MarketDataScheduler.Start()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func getEthClient() (*ethclient.Client, error) {

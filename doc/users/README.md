@@ -103,16 +103,17 @@ Response-Body:
 
 ```json
 {
-    "code": "0000000",
-    "message": "success",
-    "timestamp": 1749025620285,
-    "data": {
-        "id": "b0453c6a-1327-43ad-a9ec-836694b51e76",
-        "username": "johnny",
-        "vip_level": 1,
-        "maker_fee": 0.05,
-        "taker_fee": 0.2
-    }
+  "code": "0000000",
+  "message": "success",
+  "timestamp": 1749227089633,
+  "data": {
+    "id": "U01_the_GOD",
+    "username": "johnny",
+    "vip_level": 1,
+    "maker_fee": 0.001,
+    "taker_fee": 0.002,
+    "created_at": 1749226781000
+  }
 }
 ```
 

@@ -32,7 +32,7 @@ func NewManager(mkList []MarketInfo) *MarketManager {
 	return mgr
 }
 
-// List returns the names of all registered markets
+// List returns the names of all registered market
 func (mgr *MarketManager) List() []string {
 	names := make([]string, 0, len(mgr.markets))
 	for name := range mgr.markets {

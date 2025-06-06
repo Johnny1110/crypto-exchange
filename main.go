@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/johnny1110/crypto-exchange/container"
 	"github.com/johnny1110/crypto-exchange/engine-v2/core"
+	"github.com/johnny1110/crypto-exchange/settings"
 	"github.com/labstack/gommon/log"
 	// for windows
 	_ "modernc.org/sqlite"
@@ -14,7 +15,7 @@ func main() {
 		log.Fatalf("failed to open database: %v", err)
 	}
 
-	engine, err := core.NewMatchingEngine(initMarkets())
+	engine, err := core.NewMatchingEngine(settings.ALL_MARKETS)
 
 	if err != nil {
 		log.Fatalf("failed to init matching-engine: %v", err)
@@ -31,7 +32,9 @@ func main() {
 		log.Fatalf("failed to recover orderbook: %v", err)
 	}
 	// It will iterate all the market, and do refresh the OrderBook snapshot
-	engine.StartSnapshotRefresher()
+	//engine.StartSnapshotRefresher()
+
+	startUpAllScheduler(c)
 
 	// TODO: remove this after testing
 	//err = c.AdminService.TestAutoMakeMarket(context.Background())

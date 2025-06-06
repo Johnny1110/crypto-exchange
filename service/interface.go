@@ -8,6 +8,11 @@ import (
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
 )
 
+type ICacheService interface {
+	Update(key string, data interface{})
+	Get(key string) (interface{}, bool)
+}
+
 type IUserService interface {
 	GetUser(ctx context.Context, userId string) (*dto.User, error)
 	Register(ctx context.Context, req *dto.RegisterReq) (string, error)
@@ -44,4 +49,11 @@ type IAutoMarketMakerService interface {
 }
 
 type IPriceIndexService interface {
+}
+
+// Markets
+type IMarketDataService interface {
+	CalculateMarketData(ctx context.Context, market string) (*dto.MarketData, error)
+	GetAllMarketData() ([]dto.MarketData, error)
+	GetMarketData(market string) (dto.MarketData, error)
 }

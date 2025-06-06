@@ -55,4 +55,6 @@ type IOrderRepository interface {
 type ITradeRepository interface {
 	BatchInsert(ctx context.Context, db DBExecutor, trades []book.Trade) error
 	GetMarketLatestPrice(ctx context.Context, db DBExecutor, market string) (float64, error)
+	GetMarketPriceTimesAgo(ctx context.Context, db DBExecutor, market string, timeAgo time.Time) (float64, error)
+	GetMarketVolumeByTimeRange(ctx context.Context, db DBExecutor, market string, startTime time.Time, endTime time.Time) (float64, error)
 }

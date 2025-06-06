@@ -5,10 +5,12 @@ import (
 	"github.com/johnny1110/crypto-exchange/engine-v2/core"
 	"github.com/johnny1110/crypto-exchange/repository"
 	repositoryImpl "github.com/johnny1110/crypto-exchange/repository/impl"
+	"github.com/johnny1110/crypto-exchange/scheduler"
 	"github.com/johnny1110/crypto-exchange/security"
 	"github.com/johnny1110/crypto-exchange/service"
 	serviceImpl "github.com/johnny1110/crypto-exchange/service/impl"
 	"log"
+	"time"
 )
 
 // Container including all service and repo
@@ -23,15 +25,21 @@ type Container struct {
 	TradeRepo   repository.ITradeRepository
 
 	// Services
-	UserService      service.IUserService
-	BalanceService   service.IBalanceService
-	OrderService     service.IOrderService
-	OrderBookService service.IOrderBookService
-	AdminService     service.IAdminService
+	UserService       service.IUserService
+	BalanceService    service.IBalanceService
+	OrderService      service.IOrderService
+	OrderBookService  service.IOrderBookService
+	AdminService      service.IAdminService
+	CacheService      service.ICacheService
+	MarketDataService service.IMarketDataService
 
 	// Cache and Security
 	CredentialCache *security.CredentialCache
 	MatchingEngine  *core.MatchingEngine
+
+	// Scheduler
+	MarketDataScheduler        scheduler.Scheduler
+	OrderBookSnapshotScheduler scheduler.Scheduler
 }
 
 // NewContainer do DI
@@ -50,6 +58,9 @@ func NewContainer(db *sql.DB, engine *core.MatchingEngine) *Container {
 	// init services
 	c.initServices()
 
+	// init Scheduler
+	c.initScheduler()
+
 	return c
 }
 
@@ -66,13 +77,20 @@ func (c *Container) initServices() {
 	c.OrderService = serviceImpl.NewIOrderService(c.DB, c.MatchingEngine, c.OrderRepo, c.TradeRepo, c.BalanceRepo)
 	c.OrderBookService = serviceImpl.NewIOrderBookService(c.MatchingEngine)
 	c.AdminService = serviceImpl.NewIAdminService(c.DB, c.UserRepo, c.BalanceRepo, c.OrderService)
+	c.CacheService = serviceImpl.NewCacheService()
+	c.MarketDataService = serviceImpl.NewMarketDataService(c.DB, c.TradeRepo, c.CacheService)
 }
 
-// Cleanup 清理資源
+// Cleanup clean
 func (c *Container) Cleanup() {
 	if c.DB != nil {
 		if err := c.DB.Close(); err != nil {
 			log.Printf("Error closing database: %v", err)
 		}
 	}
+}
+
+func (c *Container) initScheduler() {
+	c.MarketDataScheduler = scheduler.NewMarketDataScheduler(c.MarketDataService, c.CacheService, 30*time.Second)
+	c.OrderBookSnapshotScheduler = scheduler.NewOrderBookSnapshotScheduler(c.MatchingEngine, 300*time.Millisecond)
 }

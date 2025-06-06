@@ -6,6 +6,7 @@ import (
 	"github.com/johnny1110/crypto-exchange/engine-v2/book"
 	"github.com/johnny1110/crypto-exchange/repository"
 	"strings"
+	"time"
 )
 
 type tradeRepository struct {
@@ -68,4 +69,34 @@ func (t tradeRepository) GetMarketLatestPrice(ctx context.Context, db repository
 	}
 
 	return 0.0, fmt.Errorf("no price found for market: %s", marketName)
+}
+
+func (t tradeRepository) GetMarketPriceTimesAgo(ctx context.Context, db repository.DBExecutor, market string, timeAgo time.Time) (float64, error) {
+	query := `
+        SELECT price 
+        FROM trades 
+        WHERE market = ? AND timestamp <= ? 
+        ORDER BY timestamp DESC 
+        LIMIT 1`
+
+	var price float64
+	err := db.QueryRowContext(ctx, query, market, timeAgo).Scan(&price)
+	if err != nil {
+		return 0, err
+	}
+	return price, nil
+}
+
+func (t tradeRepository) GetMarketVolumeByTimeRange(ctx context.Context, db repository.DBExecutor, market string, startTime time.Time, endTime time.Time) (float64, error) {
+	query := `
+        SELECT COALESCE(SUM(size), 0) 
+        FROM trades 
+        WHERE market = ? AND timestamp BETWEEN ? AND ?`
+
+	var volume float64
+	err := db.QueryRowContext(ctx, query, market, startTime, endTime).Scan(&volume)
+	if err != nil {
+		return 0, err
+	}
+	return volume, nil
 }

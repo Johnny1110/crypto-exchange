@@ -18,7 +18,7 @@ type MatchingEngine struct {
 
 func NewMatchingEngine(markets []*market.MarketInfo) (*MatchingEngine, error) {
 	if len(markets) == 0 {
-		return nil, errors.New("markets must have at least one market")
+		return nil, errors.New("market must have at least one market")
 	}
 	e := &MatchingEngine{
 		orderbooks: make(map[string]*book.OrderBook, len(markets)),

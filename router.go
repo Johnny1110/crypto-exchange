@@ -21,10 +21,12 @@ func setupRouter(c *container.Container) *gin.Engine {
 	balanceController := controller.NewBalanceController(c.BalanceService)
 	orderController := controller.NewOrderController(c.OrderService)
 	adminController := controller.NewAdminController(c.AdminService)
-	orderBookService := controller.NewOrderBookController(c.OrderBookService)
+	orderBookController := controller.NewOrderBookController(c.OrderBookService)
+	marketDataController := controller.NewMarketDataController(c.MarketDataService)
 
 	// setup routes
-	setupRoutes(router, c, userController, balanceController, orderController, adminController, orderBookService)
+	setupRoutes(router, c, userController, balanceController, orderController,
+		adminController, orderBookController, marketDataController)
 
 	return router
 }
@@ -36,7 +38,8 @@ func setupRoutes(
 	balanceController *controller.BalanceController,
 	orderController *controller.OrderController,
 	adminController *controller.AdminController,
-	orderBookService *controller.OrderBookController,
+	orderBookController *controller.OrderBookController,
+	marketDataController *controller.MarketDataController,
 ) {
 	// Health check
 	router.GET("/health", func(ctx *gin.Context) {
@@ -49,7 +52,9 @@ func setupRoutes(
 		// user etc.
 		public.POST("/users/register", userController.Register)
 		public.POST("/users/login", userController.Login)
-		public.GET("/orderbooks/:market/snapshot", orderBookService.OrderbooksSnapshot)
+		public.GET("/orderbooks/:market/snapshot", orderBookController.OrderbooksSnapshot)
+		public.GET("markets", marketDataController.GetAllMarketsData)
+		public.GET("markets/:market", marketDataController.GetMarketsData)
 	}
 
 	// Auth router

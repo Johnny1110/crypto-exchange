@@ -16,7 +16,7 @@ func NewUserRepository() repository.IUserRepository {
 }
 
 func (u userRepository) GetUserById(ctx context.Context, db repository.DBExecutor, userId string) (*dto.User, error) {
-	query := `SELECT id, username, password_hash, vip_level, maker_fee, taker_fee FROM users WHERE id = ?`
+	query := `SELECT id, username, password_hash, vip_level, maker_fee, taker_fee, created_at FROM users WHERE id = ?`
 
 	var user dto.User
 
@@ -27,6 +27,7 @@ func (u userRepository) GetUserById(ctx context.Context, db repository.DBExecuto
 		&user.VipLevel,
 		&user.MakerFee,
 		&user.TakerFee,
+		&user.CreatedAt,
 	)
 
 	if err != nil {
@@ -40,7 +41,7 @@ func (u userRepository) GetUserById(ctx context.Context, db repository.DBExecuto
 }
 
 func (u userRepository) GetUserByUsername(ctx context.Context, db repository.DBExecutor, username string) (*dto.User, error) {
-	query := `SELECT id, username, password_hash, vip_level, maker_fee, taker_fee FROM users WHERE username = ?`
+	query := `SELECT id, username, password_hash, vip_level, maker_fee, taker_fee, created_at FROM users WHERE username = ?`
 
 	var user dto.User
 
@@ -51,6 +52,7 @@ func (u userRepository) GetUserByUsername(ctx context.Context, db repository.DBE
 		&user.VipLevel,
 		&user.MakerFee,
 		&user.TakerFee,
+		&user.CreatedAt,
 	)
 
 	if err != nil {

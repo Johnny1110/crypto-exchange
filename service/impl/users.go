@@ -2,8 +2,10 @@ package serviceImpl
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/johnny1110/crypto-exchange/dto"
 	"github.com/johnny1110/crypto-exchange/repository"
@@ -12,6 +14,7 @@ import (
 	"github.com/johnny1110/crypto-exchange/settings"
 	"github.com/labstack/gommon/log"
 	"golang.org/x/crypto/bcrypt"
+	"time"
 )
 
 type userService struct {
@@ -36,7 +39,11 @@ func (s userService) GetUser(ctx context.Context, userId string) (*dto.User, err
 
 func (s userService) Register(ctx context.Context, req *dto.RegisterReq) (string, error) {
 	// gen userId
-	userID := uuid.NewString()
+	userID, err := genUIDSecure()
+	if err != nil {
+		log.Errorf("[Register] failed to generate user id: %v", err)
+		return "", fmt.Errorf("failed to create user")
+	}
 	// gen hash pwd
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -91,4 +98,34 @@ func (s userService) Login(ctx context.Context, req *dto.LoginReq) (string, erro
 func (s userService) Logout(ctx context.Context, token string) error {
 	s.credentialCache.Delete(token)
 	return nil
+}
+
+func genUIDSecure() (string, error) {
+
+	now := time.Now()
+	dateStr := now.Format("060102")
+
+	// gen 4 letters
+	letters := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	randomLetters := make([]byte, 4)
+	letterBytes := make([]byte, 4)
+
+	if _, err := rand.Read(letterBytes); err != nil {
+		return "", err
+	}
+
+	for i := 0; i < 4; i++ {
+		randomLetters[i] = letters[letterBytes[i]%26]
+	}
+
+	// gen 4 nums
+	numberBytes := make([]byte, 2)
+	if _, err := rand.Read(numberBytes); err != nil {
+		return "", err
+	}
+
+	randomNumbers := (int(numberBytes[0])<<8+int(numberBytes[1]))%9999 + 1
+	numberStr := fmt.Sprintf("%04d", randomNumbers)
+
+	return fmt.Sprintf("UID%s%s%s", dateStr, string(randomLetters), numberStr), nil
 }
