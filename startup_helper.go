@@ -122,6 +122,12 @@ func startUpAllScheduler(c *container.Container) {
 	if err != nil {
 		panic(err)
 	}
+
+	//TODO: bugged, no cancel order
+	//err = c.LQDTScheduler.Start()
+	//if err != nil {
+	//	panic(err)
+	//}
 }
 
 func getEthClient() (*ethclient.Client, error) {

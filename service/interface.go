@@ -24,6 +24,7 @@ type IUserService interface {
 type IOrderBookService interface {
 	GetSnapshot(ctx context.Context, market string) (*book.BookSnapshot, error)
 	GetLatestPrice(ctx context.Context, market string) (float64, error)
+	GetBaseQuoteAssets(ctx context.Context, market string) (string, string, error)
 }
 
 type IBalanceService interface {
@@ -36,6 +37,7 @@ type IOrderService interface {
 	CancelOrder(ctx context.Context, userID, orderID string) (*dto.Order, error)
 	QueryOrdersByMarketAndStatuses(ctx context.Context, market string, statuses []model.OrderStatus) ([]*dto.Order, error)
 	PaginationQuery(ctx context.Context, query *dto.GetOrdersQueryReq) (*dto.PaginationResp[*dto.Order], error)
+	QueryOrderByMarket(ctx context.Context, userID string, market string, isOpenOrder bool) ([]*dto.Order, error)
 }
 
 type IAdminService interface {

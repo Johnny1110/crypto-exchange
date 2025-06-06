@@ -310,6 +310,20 @@ func (s *orderService) QueryOrder(ctx context.Context, userID string, isOpenOrde
 	return orders, nil
 }
 
+func (s *orderService) QueryOrderByMarket(ctx context.Context, userID string, market string, isOpenOrder bool) ([]*dto.Order, error) {
+	if userID == "" {
+		return nil, ErrInvalidInput
+	}
+
+	statuses := getOrderStatusesByOpenFlag(isOpenOrder)
+	orders, err := s.orderRepo.GetOrdersByUserIdAndMarketAndStatuses(ctx, s.db, userID, market, statuses)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query orders: %w", err)
+	}
+
+	return orders, nil
+}
+
 func (s *orderService) QueryOrdersByMarketAndStatuses(ctx context.Context, market string, statuses []model.OrderStatus) ([]*dto.Order, error) {
 	if market == "" || len(statuses) == 0 {
 		return nil, ErrInvalidInput

@@ -9,7 +9,9 @@ import (
 	"github.com/johnny1110/crypto-exchange/security"
 	"github.com/johnny1110/crypto-exchange/service"
 	serviceImpl "github.com/johnny1110/crypto-exchange/service/impl"
+	"github.com/johnny1110/crypto-exchange/service/impl/amm"
 	"log"
+	"net/http"
 	"time"
 )
 
@@ -40,6 +42,10 @@ type Container struct {
 	// Scheduler
 	MarketDataScheduler        scheduler.Scheduler
 	OrderBookSnapshotScheduler scheduler.Scheduler
+	LQDTScheduler              scheduler.Scheduler
+
+	// Proxy
+	AmmExFuncProxy amm.IAmmExchangeFuncProxy
 }
 
 // NewContainer do DI
@@ -57,6 +63,9 @@ func NewContainer(db *sql.DB, engine *core.MatchingEngine) *Container {
 
 	// init services
 	c.initServices()
+
+	// init proxy()
+	c.initProxy()
 
 	// init Scheduler
 	c.initScheduler()
@@ -93,4 +102,13 @@ func (c *Container) Cleanup() {
 func (c *Container) initScheduler() {
 	c.MarketDataScheduler = scheduler.NewMarketDataScheduler(c.MarketDataService, c.CacheService, 30*time.Second)
 	c.OrderBookSnapshotScheduler = scheduler.NewOrderBookSnapshotScheduler(c.MatchingEngine, 300*time.Millisecond)
+	c.LQDTScheduler = scheduler.NewLQDTScheduler(c.AmmExFuncProxy, 1*time.Minute)
+}
+
+func (c *Container) initProxy() {
+	c.AmmExFuncProxy = amm.NewAmmExchangeFuncProxyImpl(
+		c.OrderBookService, c.BalanceService, c.OrderService, c.UserService,
+		&http.Client{
+			Timeout: 30 * time.Second,
+		})
 }

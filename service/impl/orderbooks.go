@@ -33,3 +33,11 @@ func (os orderBookService) GetLatestPrice(ctx context.Context, market string) (f
 	}
 	return ob.LatestPrice(), nil
 }
+
+func (os orderBookService) GetBaseQuoteAssets(ctx context.Context, market string) (string, string, error) {
+	ob, err := os.engine.GetOrderBook(market)
+	if err != nil {
+		return "", "", err
+	}
+	return ob.MarketInfo().BaseAsset, ob.MarketInfo().QuoteAsset, nil
+}

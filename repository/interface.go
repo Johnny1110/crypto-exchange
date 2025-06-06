@@ -50,6 +50,7 @@ type IOrderRepository interface {
 	UpdateOriginalSize(ctx context.Context, db DBExecutor, orderId string, originalSize float64) error
 	GetOrdersByMarketAndStatuses(ctx context.Context, db DBExecutor, market string, statuses []model.OrderStatus) ([]*dto.Order, error)
 	PaginationQuery(ctx context.Context, db DBExecutor, query *dto.GetOrdersQueryReq, statuses []model.OrderStatus, endTime time.Time) (*dto.PaginationResp[*dto.Order], error)
+	GetOrdersByUserIdAndMarketAndStatuses(ctx context.Context, b DBExecutor, userId string, market string, statuses []model.OrderStatus) ([]*dto.Order, error)
 }
 
 type ITradeRepository interface {
