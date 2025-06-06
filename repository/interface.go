@@ -34,7 +34,7 @@ type IBalanceRepository interface {
 	LockedByUserIdAndAsset(ctx context.Context, db DBExecutor, userID, asset string, amount float64) error
 	// UnlockedByUserIdAndAsset unlock user asset locked amount (decrease) and add available amount, if locked not enough return error.
 	UnlockedByUserIdAndAsset(ctx context.Context, db DBExecutor, userID, asset string, amount float64) error
-	// BatchCreate batch insert by userId and assets slice. available and locked default = 0.0
+	// BatchCreate batch insert by userId and assets.html slice. available and locked default = 0.0
 	BatchCreate(ctx context.Context, db DBExecutor, userId string, assets []string) error
 	UpdateAsset(ctx context.Context, db DBExecutor, userId string, asset string, availableChanging float64, lockedChanging float64) error
 }

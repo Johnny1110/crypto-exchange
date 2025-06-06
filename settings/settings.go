@@ -5,3 +5,4 @@ func GetAllAssets() []string {
 }
 
 const MARGIN_ACCOUNT_ID = "0"
+const INTERNAL_AMM_ACCOUNT_ID = "1"

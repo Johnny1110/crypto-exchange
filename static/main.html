@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoEx 2000 - Cryptocurrency Exchange</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(180deg, #ff66cc, #9900cc);
+            font-family: 'Press Start 2P', cursive;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+            background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAG0lEQVR4AWMAAv+BAgICAgICiAECAwICAgICAgICBtgBc4AAAAASUVORK5CYII=');
+            background-repeat: repeat;
+        }
+        .container {
+            background: rgba(51, 0, 51, 0.8);
+            border: 3px solid #ff99ff;
+            width: 800px;
+            margin: 0 auto;
+            padding: 15px;
+            box-shadow: 0 0 10px #ff66cc, 0 0 20px #9900cc;
+            border-radius: 5px;
+        }
+        .title-bar {
+            background: linear-gradient(90deg, #ff33cc, #cc00ff);
+            color: #ffffff;
+            padding: 8px;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 2px solid #ff99ff;
+            text-shadow: 1px 1px 2px #330033;
+        }
+        .title-bar button {
+            background: #ff66cc;
+            border: 2px solid #ff99ff;
+            padding: 3px 10px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 10px;
+            color: #ffffff;
+            text-shadow: 1px 1px #330033;
+            transition: all 0.2s;
+        }
+        .title-bar button:hover {
+            background: #cc00ff;
+            box-shadow: 0 0 5px #ff66cc;
+        }
+        .cmd-window {
+            background: #1a001a;
+            color: #ff66cc;
+            font-family: 'Courier New', monospace;
+            padding: 12px;
+            margin: 15px 0;
+            border: 2px solid #ff99ff;
+            height: 150px;
+            overflow-y: auto;
+            box-shadow: inset 0 0 10px #9900cc;
+            font-size: 12px;
+        }
+        .market-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #ff99ff;
+            margin: 15px 0;
+        }
+        .market-table th, .market-table td {
+            border: 1px solid #ff66cc;
+            padding: 8px;
+            text-align: left;
+            font-size: 10px;
+            color: #ffffff;
+        }
+        .market-table th {
+            background: linear-gradient(90deg, #cc00ff, #ff33cc);
+            text-shadow: 1px 1px #330033;
+        }
+        .nav-bar {
+            background: rgba(51, 0, 51, 0.8);
+            border: 2px solid #ff99ff;
+            padding: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 0 8px #ff66cc;
+        }
+        .nav-bar a {
+            margin-right: 12px;
+            color: #ffccff;
+            text-decoration: none;
+            font-size: 10px;
+            text-shadow: 1px 1px #330033;
+        }
+        .nav-bar a:hover {
+            color: #ff66cc;
+            text-shadow: 0 0 5px #ff66cc;
+        }
+        .footer {
+            text-align: center;
+            font-size: 8px;
+            color: #ffccff;
+            margin-top: 15px;
+            text-shadow: 1px 1px #330033;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="title-bar">
+        <span>CryptoEx 2000 - Cryptocurrency Exchange</span>
+        <div>
+            <button>_</button>
+            <button>□</button>
+            <button>X</button>
+        </div>
+    </div>
+    <div class="nav-bar">
+        <a href="#">Home</a>
+        <a href="#">Trade</a>
+        <a href="#">Wallet</a>
+        <a href="#">Account</a>
+        <a href="#">Logout</a>
+    </div>
+    <div class="cmd-window">
+        C:\CryptoEx> dir<br>
+        BTC/USD   69234.56   +2.34%<br>
+        ETH/USD   2987.12    -0.56%<br>
+        XRP/USD   0.5123     +1.12%<br>
+        C:\CryptoEx> trade BTC buy 0.1<br>
+        Executing trade: Buy 0.1 BTC @ 69234.56<br>
+        C:\CryptoEx> _
+    </div>
+    <table class="market-table">
+        <thead>
+        <tr>
+            <th>Trading Pair</th>
+            <th>Price (USD)</th>
+            <th>24h Change</th>
+            <th>Volume</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>BTC/USD</td>
+            <td>69234.56</td>
+            <td style="color: #00ff99;">+2.34%</td>
+            <td>1234.56 BTC</td>
+        </tr>
+        <tr>
+            <td>ETH/USD</td>
+            <td>2987.12</td>
+            <td style="color: #ff3366;">-0.56%</td>
+            <td>5678.90 ETH</td>
+        </tr>
+        <tr>
+            <td>XRP/USD</td>
+            <td>0.5123</td>
+            <td style="color: #00ff99;">+1.12%</td>
+            <td>12345678 XRP</td>
+        </tr>
+        </tbody>
+    </table>
+    <div class="footer">
+        CryptoEx 2000 © 2025 - All Rights Reserved
+    </div>
+</div>
+</body>
+</html>

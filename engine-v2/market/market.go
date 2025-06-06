@@ -49,7 +49,7 @@ func (mgr *MarketManager) Get(market string) (*MarketInfo, error) {
 	return nil, fmt.Errorf("market %s not found", market)
 }
 
-// GetAssets input market and return (base, quote) assets
+// GetAssets input market and return (base, quote) assets.html
 func (mgr *MarketManager) GetAssets(market string) (string, string, error) {
 	mi, err := mgr.Get(market)
 	if err != nil {

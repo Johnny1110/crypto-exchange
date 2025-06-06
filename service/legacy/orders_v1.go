@@ -259,7 +259,7 @@ package legacy
 //	return err
 //}
 //
-//// ParseMarket input market, return base quote assets.
+//// ParseMarket input market, return base quote assets.html.
 //func (s *OrderService) ParseMarket(market string) (string, string, error) {
 //	ob, err := s.Engine.GetOrderBook(market)
 //	if err != nil {

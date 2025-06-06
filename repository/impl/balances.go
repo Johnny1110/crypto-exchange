@@ -168,7 +168,7 @@ func (b balanceRepository) UnlockedByUserIdAndAsset(ctx context.Context, db repo
 	return nil
 }
 
-// BatchCreate batch insert by userId and assets slice. available and locked default = 0.0
+// BatchCreate batch insert by userId and assets.html slice. available and locked default = 0.0
 func (b balanceRepository) BatchCreate(ctx context.Context, db repository.DBExecutor, userId string, assets []string) error {
 	if len(assets) == 0 {
 		return nil

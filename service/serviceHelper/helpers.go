@@ -8,7 +8,7 @@ import (
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
 )
 
-// ParseMarket extracts base and quote assets from market
+// ParseMarket extracts base and quote assets.html from market
 func ParseMarket(engine *core.MatchingEngine, market string) (string, string, error) {
 	if engine == nil {
 		return "", "", fmt.Errorf("engine cannot be nil")

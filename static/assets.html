@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoEx 2000 - Account Information</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(180deg, #ff66cc, #9900cc);
+            font-family: 'Press Start 2P', cursive;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+            background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAG0lEQVR4AWMAAv+BAgICAgICiAECAwICAgICAgICBtgBc4AAAAASUVORK5CYII=');
+            background-repeat: repeat;
+        }
+        .container {
+            background: rgba(51, 0, 51, 0.8);
+            border: 3px solid #ff99ff;
+            width: 600px;
+            margin: 20px auto;
+            padding: 15px;
+            box-shadow: 0 0 10px #ff66cc, 0 0 20px #9900cc;
+            border-radius: 5px;
+        }
+        .title-bar {
+            background: linear-gradient(90deg, #ff33cc, #cc00ff);
+            color: #ffffff;
+            padding: 8px;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 2px solid #ff99ff;
+            text-shadow: 1px 1px 2px #330033;
+        }
+        .title-bar button {
+            background: #ff66cc;
+            border: 2px solid #ff99ff;
+            padding: 3px 10px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 10px;
+            color: #ffffff;
+            text-shadow: 1px 1px #330033;
+            transition: all 0.2s;
+        }
+        .title-bar button:hover {
+            background: #cc00ff;
+            box-shadow: 0 0 5px #ff66cc;
+        }
+        .nav-bar {
+            background: rgba(51, 0, 51, 0.8);
+            border: 2px solid #ff99ff;
+            padding: 8px;
+            margin: 15px 0;
+            box-shadow: 0 0 8px #ff66cc;
+        }
+        .nav-bar a {
+            margin-right: 12px;
+            color: #ffccff;
+            text-decoration: none;
+            font-size: 10px;
+            text-shadow: 1px 1px #330033;
+        }
+        .nav-bar a:hover {
+            color: #ff66cc;
+            text-shadow: 0 0 5px #ff66cc;
+        }
+        .info-section {
+            padding: 15px;
+        }
+        .info-section h3 {
+            font-size: 12px;
+            margin: 10px 0;
+            border-bottom: 2px solid #ff99ff;
+            color: #ffccff;
+            text-shadow: 1px 1px #330033;
+        }
+        .info-section p {
+            font-size: 10px;
+            margin: 5px 0;
+            color: #ffffff;
+            text-shadow: 1px 1px #330033;
+        }
+        .balance-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #ff99ff;
+            margin: 15px 0;
+        }
+        .balance-table th, .balance-table td {
+            border: 1px solid #ff66cc;
+            padding: 8px;
+            text-align: left;
+            font-size: 10px;
+            color: #ffffff;
+        }
+        .balance-table th {
+            background: linear-gradient(90deg, #cc00ff, #ff33cc);
+            text-shadow: 1px 1px #330033;
+        }
+        .cmd-window {
+            background: #1a001a;
+            color: #ff66cc;
+            font-family: 'Courier New', monospace;
+            padding: 12px;
+            margin: 15px 0;
+            border: 2px solid #ff99ff;
+            height: 200px;
+            overflow-y: auto;
+            box-shadow: inset 0 0 10px #9900cc;
+            font-size: 12px;
+        }
+        .footer {
+            text-align: center;
+            font-size: 8px;
+            color: #ffccff;
+            margin-top: 15px;
+            text-shadow: 1px 1px #330033;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="title-bar">
+        <span>CryptoEx 2000 - Account Information</span>
+        <div>
+            <button>_</button>
+            <button>□</button>
+            <button>X</button>
+        </div>
+    </div>
+    <div class="nav-bar">
+        <a href="#">Home</a>
+        <a href="#">Trade</a>
+        <a href="#">Wallet</a>
+        <a href="#">Account</a>
+        <a href="#">Logout</a>
+    </div>
+    <div class="info-section">
+        <h3>User Information</h3>
+        <p>Username: admin</p>
+        <p>Email: admin@cryptoex2000.com</p>
+        <p>Account Created: 2025-01-15</p>
+    </div>
+    <div class="info-section">
+        <h3>Asset Balances</h3>
+        <table class="balance-table">
+            <thead>
+            <tr>
+                <th>Cryptocurrency</th>
+                <th>Balance</th>
+                <th>Value (USD)</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>BTC</td>
+                <td>0.5234</td>
+                <td>36234.78</td>
+            </tr>
+            <tr>
+                <td>ETH</td>
+                <td>12.4567</td>
+                <td>37234.56</td>
+            </tr>
+            <tr>
+                <td>XRP</td>
+                <td>15000.789</td>
+                <td>7687.45</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="cmd-window" id="cmdOutput">
+        C:\CryptoEx> account info<br>
+        <pre>{
+  "user": {
+    "username": "admin",
+    "email": "admin@cryptoex2000.com",
+    "accountCreated": "2025-01-15"
+  },
+  "balances": [
+    {
+      "currency": "BTC",
+      "balance": 0.5234,
+      "valueUSD": 36234.78
+    },
+    {
+      "currency": "ETH",
+      "balance": 12.4567,
+      "valueUSD": 37234.56
+    },
+    {
+      "currency": "XRP",
+      "balance": 15000.789,
+      "valueUSD": 7687.45
+    }
+  ],
+  "timestamp": "2025-06-06T19:48:00Z"
+}</pre>
+        C:\CryptoEx> _
+    </div>
+    <div class="footer">
+        CryptoEx 2000 © 2025 - All Rights Reserved
+    </div>
+</div>
+</body>
+</html>

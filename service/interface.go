@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/johnny1110/crypto-exchange/dto"
 	"github.com/johnny1110/crypto-exchange/engine-v2/book"
+	"github.com/johnny1110/crypto-exchange/engine-v2/market"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
 )
 
@@ -35,4 +36,12 @@ type IOrderService interface {
 type IAdminService interface {
 	Settlement(ctx context.Context, req dto.SettlementReq) error
 	TestAutoMakeMarket(ctx context.Context) error
+}
+
+// Auto Market Maker (AMM) etc. >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+type IAutoMarketMakerService interface {
+	BootUp(ctx context.Context, markets []market.MarketInfo)
+}
+
+type IPriceIndexService interface {
 }

@@ -15,7 +15,7 @@ type OrderUpdateData struct {
 	FeesIncreasing             float64
 }
 
-// UserSettlementData represents settlement data for a user's assets
+// UserSettlementData represents settlement data for a user's assets.html
 type UserSettlementData struct {
 	BaseAssetAvailable  float64
 	BaseAssetLocked     float64

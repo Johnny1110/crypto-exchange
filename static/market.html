@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoEx Pixel - Trading</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <style>
+        body {
+            background: linear-gradient(180deg, #ff66cc, #9900cc);
+            font-family: 'Press Start 2P', cursive;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+            background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAG0lEQVR4AWMAAv+BAgICAgICiAECAwICAgICAgICBtgBc4AAAAASUVORK5CYII=');
+            background-repeat: repeat;
+        }
+        .container {
+            background: rgba(51, 0, 51, 0.8);
+            border: 3px solid #ff99ff;
+            width: 900px;
+            margin: 50px auto;
+            padding: 15px;
+            box-shadow: 0 0 10px #ff66cc, 0 0 20px #9900cc;
+            border-radius: 5px;
+        }
+        .title-bar {
+            background: linear-gradient(90deg, #ff33cc, #cc00ff);
+            color: #ffffff;
+            padding: 8px;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 2px solid #ff99ff;
+            text-shadow: 1px 1px 2px #330033;
+        }
+        .title-bar button {
+            background: #ff66cc;
+            border: 2px solid #ff99ff;
+            padding: 3px 10px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 10px;
+            color: #ffffff;
+            text-shadow: 1px 1px #330033;
+            transition: all 0.2s;
+        }
+        .title-bar button:hover {
+            background: #cc00ff;
+            box-shadow: 0 0 5px #ff66cc;
+        }
+        .nav-bar {
+            background: rgba(51, 0, 51, 0.8);
+            border: 2px solid #ff99ff;
+            padding: 8px;
+            margin: 15px 0;
+        }
+        .nav-bar a {
+            margin-right: 15px;
+            color: #ffccff;
+            text-decoration: none;
+            font-size: 10px;
+            text-shadow: 1px 1px #330033;
+        }
+        .nav-bar a:hover {
+            color: #ff66cc;
+            text-shadow: 0 0 5px #ff66cc;
+        }
+        .balance-section {
+            margin: 15px 0;
+            font-size: 10px;
+            color: #ffccff;
+            text-shadow: 1px 1px #330033;
+        }
+        .trading-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .chart-container, .orderbook-container, .order-form-container {
+            flex: 1;
+            min-width: 280px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #ff99ff;
+            padding: 15px;
+            box-shadow: inset 0 0 5px #9900cc;
+        }
+        .chart-container canvas {
+            max-height: 200px;
+        }
+        .latest-price {
+            font-size: 12px;
+            font-weight: bold;
+            margin: 5px 0;
+            color: #ffccff;
+            text-shadow: 1px 1px #330033;
+        }
+        .orderbook-container h4 {
+            font-size: 10px;
+            margin: 5px 0;
+            border-bottom: 1px solid #ff99ff;
+            color: #ffccff;
+            text-shadow: 1px 1px #330033;
+        }
+        .orderbook-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10px;
+            margin-bottom: 10px;
+            color: #ffccff;
+        }
+        .orderbook-table th, .orderbook-table td {
+            border: 1px solid #ff99ff;
+            padding: 3px;
+            text-align: right;
+            text-shadow: 1px 1px #330033;
+        }
+        .orderbook-table th {
+            background: linear-gradient(90deg, #ff33cc, #cc00ff);
+            color: #ffffff;
+        }
+        .orderbook-table.bid tr {
+            background: rgba(0, 255, 0, 0.2);
+        }
+        .orderbook-table.ask tr {
+            background: rgba(255, 0, 0, 0.2);
+        }
+        .volume-bar {
+            display: inline-block;
+            height: 8px;
+            background: #ff66cc;
+            border: 1px solid #ff99ff;
+        }
+        .order-form-container h3 {
+            font-size: 12px;
+            margin: 5px 0;
+            color: #ffccff;
+            text-shadow: 1px 1px #330033;
+        }
+        .tab-bar {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        .tab {
+            background: #ff66cc;
+            border: 2px solid #ff99ff;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 10px;
+            color: #ffffff;
+            margin-right: 5px;
+            text-shadow: 1px 1px #330033;
+            transition: all 0.2s;
+        }
+        .tab.active {
+            background: #cc00ff;
+            border: 2px solid #ff99ff;
+            box-shadow: 0 0 5px #ff66cc;
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .order-form-container label {
+            display: block;
+            font-size: 10px;
+            margin: 10px 0 5px;
+            color: #ffccff;
+            text-shadow: 1px 1px #330033;
+        }
+        .order-form-container input {
+            width: calc(100% - 14px);
+            padding: 6px;
+            border: 2px solid #ff99ff;
+            background: rgba(255, 255, 255, 0.1);
+            font-family: 'Press Start 2P', cursive;
+            font-size: 10px;
+            color: #ffffff;
+            box-shadow: inset 0 0 5px #9900cc;
+        }
+        .order-form-container button {
+            background: #ff66cc;
+            border: 2px solid #ff99ff;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 10px;
+            color: #ffffff;
+            width: 48%;
+            margin: 10px 5px 0 0;
+            box-shadow: 0 0 5px #ff66cc;
+            text-shadow: 1px 1px #330033;
+            transition: all 0.2s;
+        }
+        .order-form-container button:hover {
+            background: #cc00ff;
+            box-shadow: 0 0 8px #ff66cc;
+        }
+        .buy-btn {
+            background: #00cc00;
+        }
+        .sell-btn {
+            background: #cc0000;
+        }
+        .orders-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #ff99ff;
+            margin: 15px 0;
+            font-size: 10px;
+            color: #ffccff;
+        }
+        .orders-table th, .orders-table td {
+            border: 1px solid #ff99ff;
+            padding: 5px;
+            text-align: left;
+            text-shadow: 1px 1px #330033;
+        }
+        .orders-table th {
+            background: linear-gradient(90deg, #ff33cc, #cc00ff);
+            color: #ffffff;
+        }
+        .cmd-window {
+            background: #1a001a;
+            color: #ff66cc;
+            font-family: 'Courier New', monospace;
+            padding: 12px;
+            margin: 15px 0;
+            border: 2px solid #ff99ff;
+            height: 150px;
+            overflow-y: auto;
+            box-shadow: inset 0 0 10px #9900cc;
+            font-size: 12px;
+        }
+        .footer {
+            text-align: center;
+            font-size: 8px;
+            color: #ffccff;
+            margin-top: 15px;
+            text-shadow: 1px 1px #330033;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="title-bar">
+        <span>CryptoEx Pixel - Trading (BTC/USD)</span>
+        <div>
+            <button>_</button>
+            <button>□</button>
+            <button>X</button>
+        </div>
+    </div>
+    <div class="nav-bar">
+        <a href="#">Home</a>
+        <a href="#">Trade</a>
+        <a href="#">Wallet</a>
+        <a href="#">Account</a>
+        <a href="#">Logout</a>
+    </div>
+    <div class="balance-section">
+        <p>Base Balance (BTC): 0.5234</p>
+        <p>Quote Balance (USD): 15000.00</p>
+    </div>
+    <div class="trading-section">
+        <div class="chart-container">
+            <p class="latest-price">Latest Price: 69234.56 USD</p>
+            <h3>K-Line Chart (BTC/USD)</h3>
+            <canvas id="klineChart"></canvas>
+        </div>
+        <div class="orderbook-container">
+            <h3>Order Book</h3>
+            <h4>Asks</h4>
+            <table class="orderbook-table ask">
+                <thead>
+                <tr>
+                    <th>Price (USD)</th>
+                    <th>Amount (BTC)</th>
+                    <th>Volume Bar</th>
+                    <th>Total (USD)</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td>69250.00</td>
+                    <td>0.1500</td>
+                    <td><div class="volume-bar" style="width: 50px;"></div></td>
+                    <td>10387.50</td>
+                </tr>
+                <tr>
+                    <td>69240.00</td>
+                    <td>0.2000</td>
+                    <td><div class="volume-bar" style="width: 66px;"></div></td>
+                    <td>13848.00</td>
+                </tr>
+                </tbody>
+            </table>
+            <h4>Bids</h4>
+            <table class="orderbook-table bid">
+                <thead>
+                <tr>
+                    <th>Price (USD)</th>
+                    <th>Amount (BTC)</th>
+                    <th>Volume Bar</th>
+                    <th>Total (USD)</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td>69234.56</td>
+                    <td>0.3000</td>
+                    <td><div class="volume-bar" style="width: 100px;"></div></td>
+                    <td>20770.37</td>
+                </tr>
+                <tr>
+                    <td>69220.00</td>
+                    <td>0.2500</td>
+                    <td><div class="volume-bar" style="width: 83px;"></div></td>
+                    <td>17305.00</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="order-form-container">
+            <h3>Place Order</h3>
+            <div class="tab-bar">
+                <div class="tab active" onclick="switchTab('limit')">Limit</div>
+                <div class="tab" onclick="switchTab('market')">Market</div>
+            </div>
+            <div id="limit" class="tab-content active">
+                <label for="limit-price">Price (USD):</label>
+                <input type="number" id="limit-price" placeholder="Enter price">
+                <label for="limit-amount">Amount (BTC):</label>
+                <input type="number" id="limit-amount" placeholder="Enter amount">
+                <button class="buy-btn" onclick="placeOrder('limit', 'buy')">Buy</button>
+                <button class="sell-btn" onclick="placeOrder('limit', 'sell')">Sell</button>
+            </div>
+            <div id="market" class="tab-content">
+                <label for="market-amount">Amount (BTC):</label>
+                <input type="number" id="market-amount" placeholder="Enter amount">
+                <button class="buy-btn" onclick="placeOrder('market', 'buy')">Buy</button>
+                <button class="sell-btn" onclick="placeOrder('market', 'sell')">Sell</button>
+            </div>
+        </div>
+    </div>
+    <div>
+        <h3>Open Orders</h3>
+        <table class="orders-table">
+            <thead>
+            <tr>
+                <th>Order ID</th>
+                <th>Type</th>
+                <th>Side</th>
+                <th>Price (USD)</th>
+                <th>Amount (BTC)</th>
+                <th>Status</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>ORD12345</td>
+                <td>Limit</td>
+                <td>Buy</td>
+                <td>69200.00</td>
+                <td>0.1000</td>
+                <td>Open</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <div>
+        <h3>Order History</h3>
+        <table class="orders-table">
+            <thead>
+            <tr>
+                <th>Order ID</th>
+                <th>Type</th>
+                <th>Side</th>
+                <th>Price (USD)</th>
+                <th>Amount (BTC)</th>
+                <th>Status</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>ORD12344</td>
+                <td>Market</td>
+                <td>Sell</td>
+                <td>69234.56</td>
+                <td>0.0500</td>
+                <td>Filled</td>
+            </tr>
+            <tr>
+                <td>ORD12343</td>
+                <td>Limit</td>
+                <td>Buy</td>
+                <td>69000.00</td>
+                <td>0.2000</td>
+                <td>Filled</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="cmd-window" id="cmdOutput">
+        C:\CryptoEx> trading BTC/USD<br>
+        Enter order details to trade<br>
+        C:\CryptoEx> _
+    </div>
+    <div class="footer">
+        CryptoEx Pixel © 2025 - All Rights Reserved
+    </div>
+</div>
+<script>
+    // Initialize K-line chart
+    const ctx = document.getElementById('klineChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'candlestick',
+        data: {
+            datasets: [{
+                label: 'BTC/USD',
+                data: [
+                    { t: new Date('2025-06-06T00:00:00').getTime(), o: 69000, h: 69500, l: 68800, c: 69234.56 },
+                    { t: new Date('2025-06-06T01:00:00').getTime(), o: 69234.56, h: 69600, l: 69000, c: 69300 },
+                    { t: new Date('2025-06-06T02:00:00').getTime(), o: 69300, h: 69450, l: 69100, c: 69250 }
+                ],
+                borderColor: '#ff99ff',
+                backgroundColor: (ctx) => ctx.raw.c >= ctx.raw.o ? '#00cc00' : '#cc0000'
+            }]
+        },
+        options: {
+            plugins: { legend: { display: false } },
+            scales: { x: { type: 'time', time: { unit: 'hour' } }, y: { beginAtZero: false } }
+        }
+    });
+
+    // Tab switching
+    function switchTab(tab) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.getElementById(tab).classList.add('active');
+        document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+    }
+
+    // Handle order placement
+    function placeOrder(orderType, side) {
+        const price = document.getElementById('limit-price')?.value;
+        const amount = document.getElementById(`${orderType}-amount`).value;
+        const cmdOutput = document.getElementById('cmdOutput');
+
+        // Simulate order validation
+        let response;
+        if (orderType === 'limit' && (!price || price <= 0)) {
+            response = {
+                status: 'error',
+                message: 'Price is required for limit orders',
+                timestamp: new Date().toISOString()
+            };
+        } else if (!amount || amount <= 0) {
+            response = {
+                status: 'error',
+                message: 'Invalid amount',
+                timestamp: new Date().toISOString()
+            };
+        } else {
+            response = {
+                status: 'success',
+                orderId: 'ORD' + Math.floor(Math.random() * 100000),
+                type: orderType,
+                side: side,
+                price: orderType === 'limit' ? parseFloat(price).toFixed(2) : 'Market',
+                amount: parseFloat(amount).toFixed(4),
+                timestamp: new Date().toISOString()
+            };
+        }
+
+        // Display JSON response in CMD window
+        cmdOutput.innerHTML = `C:\\CryptoEx> trade ${side} ${amount} BTC ${orderType === 'limit' ? '@ ' + price : ''}<br>` +
+            `<pre>${JSON.stringify(response, null, 2)}</pre>` +
+            `C:\\CryptoEx> _`;
+        cmdOutput.scrollTop = cmdOutput.scrollHeight;
+    }
+</script>
+</body>
+</html>

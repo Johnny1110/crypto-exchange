@@ -229,7 +229,7 @@ func (s *orderService) executeTradeSettlementPhase(ctx context.Context, orderCtx
 	})
 }
 
-// updateUserAssets Update user base and quote assets.
+// updateUserAssets Update user base and quote assets.html.
 func (s *orderService) updateUserAssets(ctx context.Context, tx *sql.Tx, userID string, assets *dto.AssetDetails, settlement *serviceHelper.UserSettlementData) error {
 	// update BASE asset for user.
 	if err := s.balanceRepo.UpdateAsset(ctx, tx, userID, assets.BaseAsset, settlement.BaseAssetAvailable, settlement.BaseAssetLocked); err != nil {
