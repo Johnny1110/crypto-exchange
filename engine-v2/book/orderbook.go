@@ -69,10 +69,12 @@ func NewPriceVolumePair(price float64, volume float64) *PriceVolumePair {
 // BookSnapshot holds the top 20 bid and ask levels
 type BookSnapshot struct {
 	// key: priceLevel value: volume
-	BidSide     []*PriceVolumePair `json:"bid_side"`
-	AskSide     []*PriceVolumePair `json:"ask_side"`
-	LatestPrice float64            `json:"latest_price"`
-	Timestamp   time.Time          `json:"-"`
+	BidSide      []*PriceVolumePair `json:"bid_side"`
+	AskSide      []*PriceVolumePair `json:"ask_side"`
+	LatestPrice  float64            `json:"latest_price"`
+	BestBidPrice float64            `json:"best_bid_price"`
+	BestAskPrice float64            `json:"best_ask_price"`
+	Timestamp    time.Time          `json:"-"`
 }
 
 func NewBookSnapshot() *BookSnapshot {
@@ -134,10 +136,12 @@ func (ob *OrderBook) Snapshot() BookSnapshot {
 	defer ob.snapshotMu.RUnlock()
 
 	return BookSnapshot{
-		BidSide:     ob.copyPriceVolumePairs(ob.snapshot.BidSide),
-		AskSide:     ob.copyPriceVolumePairs(ob.snapshot.AskSide),
-		LatestPrice: ob.snapshot.LatestPrice,
-		Timestamp:   ob.snapshot.Timestamp,
+		BidSide:      ob.copyPriceVolumePairs(ob.snapshot.BidSide),
+		AskSide:      ob.copyPriceVolumePairs(ob.snapshot.AskSide),
+		BestAskPrice: ob.snapshot.BestAskPrice,
+		BestBidPrice: ob.snapshot.BestBidPrice,
+		LatestPrice:  ob.snapshot.LatestPrice,
+		Timestamp:    ob.snapshot.Timestamp,
 	}
 }
 
@@ -165,6 +169,10 @@ func (ob *OrderBook) RefreshSnapshot() {
 	ob.refreshBidSnapshot()
 	ob.refreshAskSnapshot()
 	ob.snapshot.LatestPrice = ob.latestPrice
+	bestBIdPrice, _ := ob.bidSide.BestPrice()
+	bestAskPrice, _ := ob.askSide.BestPrice()
+	ob.snapshot.BestBidPrice = bestBIdPrice
+	ob.snapshot.BestAskPrice = bestAskPrice
 	ob.snapshot.Timestamp = time.Now()
 }
 

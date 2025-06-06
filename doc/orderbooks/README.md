@@ -23,12 +23,12 @@ Response-Body:
 {
     "code": "0000000",
     "message": "success",
-    "timestamp": 1749138136690,
+    "timestamp": 1749182627291,
     "data": {
         "bid_side": [
             {
                 "price": 3000,
-                "volume": 10
+                "volume": 9.100000000000001
             },
             {
                 "price": 2900,
@@ -50,7 +50,7 @@ Response-Body:
         "ask_side": [
             {
                 "price": 3100,
-                "volume": 10
+                "volume": 9.290322580645151
             },
             {
                 "price": 3200,
@@ -69,7 +69,9 @@ Response-Body:
                 "volume": 10
             }
         ],
-        "latest_price": 0
+    "latest_price": 3000,
+    "best_bid_price": 3000,
+    "best_ask_price": 3100
     }
 }
 ```
