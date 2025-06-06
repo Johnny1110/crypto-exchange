@@ -44,7 +44,7 @@ DOT-USDT
 * [Balances](balances)
 * [Orders](orders)
 * [OrderBooks](orderbooks)
-* [Market][markets]
+* [Market](markets)
 
 * [Admins (General for testing)](admins)
 
