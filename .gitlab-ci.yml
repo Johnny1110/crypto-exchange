@@ -1,0 +1,31 @@
+stages:
+    - deploy # 4. 建構 Docker 鏡像與執行容器
+
+
+.base-job-config: # 基底 job 可提供所有 job 繼承使用
+    only:
+        - main # 僅限 main 分支才做
+    image: golang:latest # 各 job 基底 image
+    tags:
+      - crpto-runner
+    before_script:
+        - ls
+    interruptible: true # 如果有新的流水線產生，馬上中斷
+
+##############################
+#  以下定義 pipline 具體細節
+##############################
+
+# depoly
+depoly-job:
+    stage: deploy
+    extends: [.base-job-config]
+    cache: [] # no need cache, it turn to artifacts
+    variables:
+      IMAGE_NAME: exg # 設定鏡像名稱變數
+      APP_CONTAINER_NAME: exg # 設定容器名稱變數
+    image: docker # 基底改用 docker
+    script: # 
+        - docker build -t $IMAGE_NAME .    # 建構鏡像
+        - if [ "$(docker ps -aq --filter name=$APP_CONTAINER_NAME)" ]; then docker rm -f $APP_CONTAINER_NAME; fi # 刪除舊的容器
+        - docker run -d -p 8080:8080 --name $APP_CONTAINER_NAME $IMAGE_NAME # 建立新容器並執行
