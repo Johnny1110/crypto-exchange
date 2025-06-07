@@ -16,7 +16,8 @@ func CORS() gin.HandlerFunc {
 	return cors.New(cors.Config{
 		AllowAllOrigins:  true, // allow all
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
+		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization", "Admin-Token"},
+		AllowWebSockets:  true,
 		AllowCredentials: true,
 	})
 }
@@ -24,7 +25,6 @@ func CORS() gin.HandlerFunc {
 // ErrorHandler middleware
 func ErrorHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Next()
 
 		if len(c.Errors) > 0 {
 			err := c.Errors.Last()
@@ -37,6 +37,8 @@ func ErrorHandler() gin.HandlerFunc {
 				c.JSON(http.StatusInternalServerError, controller.HandleCodeError(controller.SYSTEM_ERROR, err))
 			}
 		}
+
+		c.Next()
 	}
 }
 
