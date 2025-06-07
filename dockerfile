@@ -8,5 +8,6 @@ RUN go build -o exchange
 FROM golang:latest
 WORKDIR /app
 COPY --from=builder /app/exchange .
+COPY --from=builder /app/exg.db .
 EXPOSE 8080
 CMD ["./exchange"]
