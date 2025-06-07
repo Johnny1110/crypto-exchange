@@ -65,8 +65,8 @@ func (s userService) Register(ctx context.Context, req *dto.RegisterReq) (string
 			Username:     req.Username,
 			PasswordHash: string(hash),
 			VipLevel:     1,
-			MakerFee:     0.05,
-			TakerFee:     0.20,
+			MakerFee:     0.001,
+			TakerFee:     0.002,
 		})
 
 		err = s.balanceRepo.BatchCreate(ctx, tx, userID, settings.GetAllAssets())
