@@ -90,7 +90,7 @@ func recoverOrderBook(c *container.Container) error {
 		}
 		latestPrice, err := c.TradeRepo.GetMarketLatestPrice(ctx, c.DB, marketName)
 		if err != nil {
-			log.Errorf("[RecoverOrderBook] failed to get latest price for market: %s", marketName)
+			log.Warnf("[RecoverOrderBook] failed to get latest price for market: %s, using default 0.0", marketName)
 			latestPrice = 0.0
 		}
 
@@ -124,10 +124,10 @@ func startUpAllScheduler(c *container.Container) {
 	}
 
 	//TODO: bugged, no cancel order
-	//err = c.LQDTScheduler.Start()
-	//if err != nil {
-	//	panic(err)
-	//}
+	err = c.LQDTScheduler.Start()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func getEthClient() (*ethclient.Client, error) {

@@ -26,9 +26,8 @@ func NewProvideLiquidityStrategy(exchangeFuncProxy IAmmExchangeFuncProxy, ammUse
 }
 
 var (
-	separate            = 0.001    // 報價間距(Spread)±0.1%
-	maxQuoteAmtPerLevel = 100000.0 // 每檔位維持 10 萬 USDT
-	levelAmtPerSide     = 20       // ask, bid 各維持 20 檔位價格
+	separate        = 0.001 // 報價間距(Spread)±0.1%
+	levelAmtPerSide = 20    // ask, bid 各維持 20 檔位價格
 )
 
 // PriceLevel 代表一個價格檔位
@@ -38,7 +37,7 @@ type PriceLevel struct {
 }
 
 // MakeMarket provideLiquidityStrategy can access exchangeFuncProxy to make market
-func (p *provideLiquidityStrategy) MakeMarket(ctx context.Context, marketInfo market.MarketInfo) {
+func (p *provideLiquidityStrategy) MakeMarket(ctx context.Context, marketInfo market.MarketInfo, maxQuoteAmtPerLevel float64) {
 	marketName := marketInfo.Name
 
 	// 1. 獲取指數價格作為中間價
@@ -63,15 +62,15 @@ func (p *provideLiquidityStrategy) MakeMarket(ctx context.Context, marketInfo ma
 	}
 
 	// 4. 計算理想的價格檔位
-	idealBidLevels := p.calculateIdealPriceLevels(indexPrice, model.BID, balance)
-	idealAskLevels := p.calculateIdealPriceLevels(indexPrice, model.ASK, balance)
+	idealBidLevels := p.calculateIdealPriceLevels(indexPrice, model.BID, balance, maxQuoteAmtPerLevel)
+	idealAskLevels := p.calculateIdealPriceLevels(indexPrice, model.ASK, balance, maxQuoteAmtPerLevel)
 
 	// 5. 分析現有訂單並進行調整
 	p.adjustOrders(ctx, marketName, openOrders, idealBidLevels, idealAskLevels)
 }
 
 // calculateIdealPriceLevels 計算理想的價格檔位
-func (p *provideLiquidityStrategy) calculateIdealPriceLevels(indexPrice float64, side model.Side, balance Balance) []PriceLevel {
+func (p *provideLiquidityStrategy) calculateIdealPriceLevels(indexPrice float64, side model.Side, balance Balance, maxQuoteAmtPerLevel float64) []PriceLevel {
 	levels := make([]PriceLevel, 0, levelAmtPerSide)
 
 	for i := 1; i <= levelAmtPerSide; i++ {

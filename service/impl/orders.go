@@ -204,33 +204,31 @@ func (s *orderService) executeTradeSettlementPhase(ctx context.Context, orderCtx
 		return fmt.Errorf("failed to process trade settlement: %w", err)
 	}
 
-	return WithTx(ctx, s.db, func(tx *sql.Tx) error {
-		// Update orders
-		for _, orderUpdate := range settlementResult.OrderUpdates {
-			if err := s.orderRepo.SyncTradeMatchingResult(ctx, tx, orderUpdate.OrderID, orderUpdate.RemainingSizeDecreasing, orderUpdate.DealtQuoteAmountIncreasing, orderUpdate.FeesIncreasing); err != nil {
-				return fmt.Errorf("failed to sync trade matching result for order %s: %w", orderUpdate.OrderID, err)
-			}
+	// Update orders
+	for _, orderUpdate := range settlementResult.OrderUpdates {
+		if err := s.orderRepo.SyncTradeMatchingResult(ctx, s.db, orderUpdate.OrderID, orderUpdate.RemainingSizeDecreasing, orderUpdate.DealtQuoteAmountIncreasing, orderUpdate.FeesIncreasing); err != nil {
+			return fmt.Errorf("failed to sync trade matching result for order %s: %w", orderUpdate.OrderID, err)
 		}
+	}
 
-		// Update user balances
-		for userID, settlement := range settlementResult.UserSettlements {
-			if err := s.updateUserAssets(ctx, tx, userID, orderCtx.Assets, settlement); err != nil {
-				log.Errorf("updateUserAssets error: %v", err)
-				return err
-			}
-		}
-
-		// settle Fees Revenue to exchange's margin account
-		if err := s.settleFeesRevenue(ctx, tx, settlementResult); err != nil {
+	// Update user balances
+	for userID, settlement := range settlementResult.UserSettlements {
+		if err := s.updateUserAssets(ctx, s.db, userID, orderCtx.Assets, settlement); err != nil {
+			log.Errorf("updateUserAssets error: %v", err)
 			return err
 		}
+	}
 
-		return nil
-	})
+	// settle Fees Revenue to exchange's margin account
+	if err := s.settleFeesRevenue(ctx, s.db, settlementResult); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // updateUserAssets Update user base and quote assets.html.
-func (s *orderService) updateUserAssets(ctx context.Context, tx *sql.Tx, userID string, assets *dto.AssetDetails, settlement *serviceHelper.UserSettlementData) error {
+func (s *orderService) updateUserAssets(ctx context.Context, tx *sql.DB, userID string, assets *dto.AssetDetails, settlement *serviceHelper.UserSettlementData) error {
 	// update BASE asset for user.
 	if err := s.balanceRepo.UpdateAsset(ctx, tx, userID, assets.BaseAsset, settlement.BaseAssetAvailable, settlement.BaseAssetLocked); err != nil {
 		return fmt.Errorf("failed to update base asset: %w", err)
@@ -357,7 +355,7 @@ func (s *orderService) PaginationQuery(ctx context.Context, query *dto.GetOrders
 	return s.orderRepo.PaginationQuery(ctx, s.db, query, statuses, endTime)
 }
 
-func (s *orderService) settleFeesRevenue(ctx context.Context, tx *sql.Tx, result *serviceHelper.TradeSettlementResult) error {
+func (s *orderService) settleFeesRevenue(ctx context.Context, tx *sql.DB, result *serviceHelper.TradeSettlementResult) error {
 
 	err := s.balanceRepo.UpdateAsset(ctx, tx, settings.MARGIN_ACCOUNT_ID, result.BaseAsset, result.TotalBaseFees, 0)
 	if err != nil {

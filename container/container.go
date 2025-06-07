@@ -102,7 +102,7 @@ func (c *Container) Cleanup() {
 func (c *Container) initScheduler() {
 	c.MarketDataScheduler = scheduler.NewMarketDataScheduler(c.MarketDataService, c.CacheService, 30*time.Second)
 	c.OrderBookSnapshotScheduler = scheduler.NewOrderBookSnapshotScheduler(c.MatchingEngine, 300*time.Millisecond)
-	c.LQDTScheduler = scheduler.NewLQDTScheduler(c.AmmExFuncProxy, 1*time.Minute)
+	c.LQDTScheduler = scheduler.NewLQDTScheduler(c.AmmExFuncProxy, 5*time.Second)
 }
 
 func (c *Container) initProxy() {

@@ -23,10 +23,10 @@ VALUES ('0', 'USDT', 0, 0),
 
 -- Create Balances for Maker Account
 INSERT INTO balances(user_id,asset,available,locked)
-VALUES ('MID250606CXAZ1199', 'USDT', 50000000, 0),
-       ('MID250606CXAZ1199', 'BTC', 5000, 0),
-       ('MID250606CXAZ1199', 'ETH', 400000, 0),
-       ('MID250606CXAZ1199', 'DOT', 2000000, 0);
+VALUES ('MID250606CXAZ1199', 'USDT', 75000000, 0),
+       ('MID250606CXAZ1199', 'BTC', 500, 0), -- BTC: 50000000 USDT
+       ('MID250606CXAZ1199', 'ETH', 8000, 0), -- ETH: 20000000 USDT
+       ('MID250606CXAZ1199', 'DOT', 500000, 0); -- DOT: 2000000 USDT
 
 -- Create Balances for Maker Account
 INSERT INTO balances(user_id,asset,available,locked)

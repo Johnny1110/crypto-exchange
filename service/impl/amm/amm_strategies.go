@@ -8,7 +8,7 @@ import (
 )
 
 type AutoMarketStrategy interface {
-	MakeMarket(ctx context.Context, market market.MarketInfo)
+	MakeMarket(ctx context.Context, market market.MarketInfo, maxQuoteAmtPerLevel float64)
 }
 
 type Strategy int

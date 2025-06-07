@@ -5,8 +5,6 @@ import (
 	"github.com/johnny1110/crypto-exchange/engine-v2/core"
 	"github.com/johnny1110/crypto-exchange/settings"
 	"github.com/labstack/gommon/log"
-	// for windows
-	_ "modernc.org/sqlite"
 )
 
 func main() {
