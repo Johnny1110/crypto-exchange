@@ -7,11 +7,13 @@ toolchain go1.23.9
 require (
 	github.com/emirpasic/gods v1.18.1
 	github.com/ethereum/go-ethereum v1.15.11
+	github.com/gin-contrib/cors v1.7.5
 	github.com/gin-gonic/gin v1.10.1
 	github.com/google/uuid v1.6.0
 	github.com/labstack/echo/v4 v4.13.3
 	github.com/labstack/gommon v0.4.2
 	github.com/mattn/go-sqlite3 v1.14.28
+	github.com/rs/cors v1.7.0
 	golang.org/x/crypto v0.38.0
 )
 
