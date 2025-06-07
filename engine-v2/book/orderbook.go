@@ -257,7 +257,7 @@ func (ob *OrderBook) PlaceOrder(orderType model.OrderType, order *model.Order) (
 		return nil, fmt.Errorf("%w: %s", ErrOrderExists, order.ID)
 	}
 
-	log.Infof("[OrderBook] PlaceOrder %s order, orderID: %s, side: %s", orderType, order.ID, order.Side)
+	log.Debugf("[OrderBook] PlaceOrder %s order, orderID: %s, side: %s", orderType, order.ID, order.Side)
 
 	switch orderType {
 	case model.LIMIT:

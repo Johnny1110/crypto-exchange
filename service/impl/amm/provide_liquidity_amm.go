@@ -43,21 +43,21 @@ func (p *ProvideLiquidityStrategy) MakeMarket(ctx context.Context, marketInfo ma
 	// 1. 獲取指數價格作為中間價
 	indexPrice, err := p.ExchangeFuncProxy.GetIndexPrice(ctx, marketName)
 	if err != nil {
-		log.Printf("[AMM] Failed to get index price for %s: %v", marketName, err)
+		log.Warnf("[AMM] Failed to get index price for %s: %v", marketName, err)
 		return
 	}
 
 	// 2. 獲取當前餘額
 	balance, err := p.ExchangeFuncProxy.GetBalance(ctx, p.AmmUID, marketName)
 	if err != nil {
-		log.Printf("[AMM] Failed to get balance for %s: %v", marketName, err)
+		log.Warnf("[AMM] Failed to get balance for %s: %v", marketName, err)
 		return
 	}
 
 	// 3. 獲取當前開放訂單
 	openOrders, err := p.ExchangeFuncProxy.GetOpenOrders(ctx, p.AmmUID, marketName)
 	if err != nil {
-		log.Printf("[AMM] Failed to get open orders for %s: %v", marketName, err)
+		log.Warnf("[AMM] Failed to get open orders for %s: %v", marketName, err)
 		return
 	}
 
@@ -136,21 +136,43 @@ func (p *ProvideLiquidityStrategy) AdjustOrders(ctx context.Context, marketName 
 func (p *ProvideLiquidityStrategy) AdjustOrdersForSide(ctx context.Context, marketName string,
 	existingOrders map[float64]*dto.Order, idealLevels []PriceLevel, side model.Side) {
 
-	// 1. 新增訂單
-	for _, idealLevel := range idealLevels {
+	// 創建理想價格的 map 以便快速查找Add commentMore actions
+	idealPrices := make(map[float64]PriceLevel)
+	for _, level := range idealLevels {
+		idealPrices[level.Price] = level
+	}
 
-		err := p.PlaceNewOrder(ctx, marketName, idealLevel.Price, idealLevel.Volume, side)
-		if err != nil {
-			log.Warnf("[AMM] Failed to place new order at price %f: %v", idealLevel.Price, err)
+	// 1. 檢查需要取消的訂單（價格不在理想檔位中，或數量需要調整）
+	var ordersToCancel []*dto.Order
+	for price, order := range existingOrders {
+		if idealLevel, exists := idealPrices[price]; !exists {
+			// 價格不在理想檔位中，需要取消
+			ordersToCancel = append(ordersToCancel, order)
+		} else if math.Abs(order.RemainingSize-idealLevel.Volume) > idealLevel.Volume*0.1 {
+			// 數量差異超過 10%，需要重新下單
+			ordersToCancel = append(ordersToCancel, order)
 		}
 	}
 
-	// 2. 取消舊單
-	//log.Infof("[AMM] ready to cancel orders, marketName: %s, count: %v", marketName, len(existingOrders))
-	for _, existingOrder := range existingOrders {
-		_, err := p.ExchangeFuncProxy.CancelOrder(ctx, existingOrder.UserID, existingOrder.ID)
+	// 2. 取消不合適的訂單
+	for _, order := range ordersToCancel {
+		_, err := p.ExchangeFuncProxy.CancelOrder(ctx, p.AmmUID, order.ID)
 		if err != nil {
-			log.Warnf("[AMM] Falied to cancel order: orderId:%s, err:%v", existingOrder.ID, err)
+			log.Warnf("Failed to cancel order %s: %v", order.ID, err)
+			continue
+		}
+		delete(existingOrders, order.Price)
+		log.Debugf("Canceled order: %s at price %f", order.ID, order.Price)
+	}
+
+	// 3. 檢查需要新增的訂單
+	for _, idealLevel := range idealLevels {
+		if _, exists := existingOrders[idealLevel.Price]; !exists {
+			// 這個價格檔位沒有訂單，需要新增
+			err := p.PlaceNewOrder(ctx, marketName, idealLevel.Price, idealLevel.Volume, side)
+			if err != nil {
+				log.Warnf("Failed to place new order at price %f: %v", idealLevel.Price, err)
+			}
 		}
 	}
 }
@@ -172,7 +194,7 @@ func (p *ProvideLiquidityStrategy) PlaceNewOrder(ctx context.Context, marketName
 		return fmt.Errorf("[AMM] failed to place order: %w", err)
 	}
 
-	log.Printf("[AMM] Placed new %s order: price=%f, volume=%f",
+	log.Debugf("[AMM] Placed new %s order: price=%f, volume=%f",
 		map[model.Side]string{model.BID: "BUY", model.ASK: "SELL"}[side], price, volume)
 
 	return nil
