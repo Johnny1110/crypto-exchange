@@ -3,6 +3,7 @@ package scheduler
 import (
 	"context"
 	"github.com/johnny1110/crypto-exchange/dto"
+	"github.com/johnny1110/crypto-exchange/service"
 	"github.com/johnny1110/crypto-exchange/service/impl/amm"
 	"github.com/johnny1110/crypto-exchange/settings"
 	"github.com/labstack/gommon/log"
@@ -15,19 +16,23 @@ type LQDTScheduler struct {
 	ammUser         dto.User
 }
 
-func NewLQDTScheduler(ammExgFuncProxy amm.IAmmExchangeFuncProxy, duration time.Duration) Scheduler {
+func NewLQDTScheduler(ammExgFuncProxy amm.IAmmExchangeFuncProxy, service service.IUserService, duration time.Duration) Scheduler {
+	ammAccount, err := service.GetUser(context.Background(), settings.INTERNAL_AMM_ACCOUNT_ID)
+	if err != nil {
+		log.Fatalf("[NewLQDTScheduler] failed to gat AMM User Data: %v", err)
+	}
+
 	return &LQDTScheduler{
 		ammExgFuncProxy: ammExgFuncProxy,
 		duration:        duration,
-		// TODO: remove this
-		ammUser: dto.User{ID: "MID250606CXAZ1199", Username: "market_maker", MakerFee: 0.0001, TakerFee: 0.002},
+		ammUser:         *ammAccount,
 	}
 }
 
 var maxQuoteAmtPerLevelMap = map[string]float64{
-	"ETH-USDT": 1000,
-	"BTC-USDT": 2000,
-	"DOT-USDT": 250,
+	"ETH-USDT": 4000,
+	"BTC-USDT": 10000,
+	"DOT-USDT": 888,
 }
 
 func (L LQDTScheduler) Start() error {

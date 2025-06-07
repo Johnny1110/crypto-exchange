@@ -74,6 +74,8 @@ type BookSnapshot struct {
 	LatestPrice  float64            `json:"latest_price"`
 	BestBidPrice float64            `json:"best_bid_price"`
 	BestAskPrice float64            `json:"best_ask_price"`
+	TotalBidSize float64            `json:"total_bid_size"`
+	TotalAskSize float64            `json:"total_ask_size"`
 	Timestamp    time.Time          `json:"-"`
 }
 
@@ -141,6 +143,8 @@ func (ob *OrderBook) Snapshot() BookSnapshot {
 		BestAskPrice: ob.snapshot.BestAskPrice,
 		BestBidPrice: ob.snapshot.BestBidPrice,
 		LatestPrice:  ob.snapshot.LatestPrice,
+		TotalAskSize: ob.snapshot.TotalAskSize,
+		TotalBidSize: ob.snapshot.TotalBidSize,
 		Timestamp:    ob.snapshot.Timestamp,
 	}
 }
@@ -174,6 +178,8 @@ func (ob *OrderBook) RefreshSnapshot() {
 	ob.snapshot.BestBidPrice = bestBIdPrice
 	ob.snapshot.BestAskPrice = bestAskPrice
 	ob.snapshot.Timestamp = time.Now()
+	ob.snapshot.TotalBidSize = ob.bidSide.totalVolume
+	ob.snapshot.TotalAskSize = ob.askSide.totalVolume
 }
 
 // refreshBidSnapshot refreshes bid side snapshot (top 20 highest prices)
