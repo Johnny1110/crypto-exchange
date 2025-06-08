@@ -29,12 +29,6 @@ func NewLQDTScheduler(ammExgFuncProxy amm.IAmmExchangeFuncProxy, service service
 	}
 }
 
-var maxQuoteAmtPerLevelMap = map[string]float64{
-	"ETH-USDT": 4000,
-	"BTC-USDT": 10000,
-	"DOT-USDT": 888,
-}
-
 func (L LQDTScheduler) Start() error {
 	ticker := time.NewTicker(L.duration)
 	log.Info("[LQDTScheduler] start")
@@ -45,7 +39,7 @@ func (L LQDTScheduler) Start() error {
 	go func() {
 		for range ticker.C {
 			for _, marketInfo := range settings.ALL_MARKETS {
-				maxQuoteAmtPerLevel, ok := maxQuoteAmtPerLevelMap[marketInfo.Name]
+				maxQuoteAmtPerLevel, ok := settings.MAX_QUOTE_AMT_PER_LEVEL_MAP[marketInfo.Name]
 				if !ok {
 					log.Warnf("[LQDTScheduler] no found maxQuoteAmtPerLevel param for market: %s, using default 1 USDT", marketInfo.Name)
 					maxQuoteAmtPerLevel = 1

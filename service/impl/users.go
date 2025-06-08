@@ -70,7 +70,7 @@ func (s userService) Register(ctx context.Context, req *dto.RegisterReq) (string
 		})
 
 		err = s.balanceRepo.BatchCreate(ctx, tx, userID, settings.GetAllAssets())
-
+		_ = s.balanceRepo.UpdateAsset(ctx, tx, userID, "USDT", 500, 0)
 		return err
 	})
 
