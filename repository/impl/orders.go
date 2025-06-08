@@ -407,9 +407,9 @@ func (o orderRepository) GetOrdersByUserIdAndMarketAndStatuses(ctx context.Conte
 
 	for i, status := range statuses {
 		placeholders[i] = "?"
-		args[i+1] = string(status)
+		args[i+2] = string(status)
 	}
-	//TODO
+
 	query := fmt.Sprintf(`SELECT id, user_id, market, side, price, original_size, remaining_size, 
 		quote_amount, avg_dealt_price, type, mode, status, created_at, updated_at, fee_asset, fee_rate, fees
 		FROM orders WHERE user_id = ? AND market = ? AND status IN (%s) 

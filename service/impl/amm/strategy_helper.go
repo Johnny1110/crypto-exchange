@@ -21,6 +21,17 @@ type Balance struct {
 	quoteLocked    float64 // locked by opening order
 }
 
+func NewBalance(baseAsset, quoteAsset string, baseAva, baseLocked, quoteAva, quoteLocked float64) *Balance {
+	return &Balance{
+		baseAsset:      baseAsset,
+		quoteAsset:     quoteAsset,
+		baseAvailable:  baseAva,
+		baseLocked:     baseLocked,
+		quoteAvailable: quoteAva,
+		quoteLocked:    quoteLocked,
+	}
+}
+
 type IAmmExchangeFuncProxy interface {
 	GetBalance(ctx context.Context, ammUID string, marketName string) (Balance, error)
 	GetIndexPrice(ctx context.Context, symbol string) (float64, error)

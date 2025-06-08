@@ -137,7 +137,7 @@ func (s *orderService) executeOrderPlacement(ctx context.Context, orderCtx *dto.
 		return err
 	}
 
-	log.Infof("[executeOrderPlacement] Phase-1 done: %v", orderCtx)
+	log.Debugf("[executeOrderPlacement] Phase-1 done: %v", orderCtx)
 
 	// Phase 2: Process trade settlement
 	if err := s.executeTradeSettlementPhase(ctx, orderCtx); err != nil {

@@ -13,4 +13,4 @@ var ALL_MARKETS = []*market.MarketInfo{
 }
 
 const MARGIN_ACCOUNT_ID = "0"
-const INTERNAL_AMM_ACCOUNT_ID = "1"
+const INTERNAL_AMM_ACCOUNT_ID = "MID250606CXAZ1199"

@@ -66,6 +66,7 @@ func (e *MatchingEngine) CancelOrder(market string, orderID string) (*model.Orde
 	if err != nil {
 		return nil, err
 	}
+	log.Infof("[Engine] CancelOrder, market:[%s], orderID:[%s]", market, orderID)
 	return ob.CancelOrder(orderID)
 }
 
