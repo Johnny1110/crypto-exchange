@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"github.com/labstack/gommon/log"
 	// for windows
-	//_ "modernc.org/sqlite"
+	_ "modernc.org/sqlite"
 	// for unix
-	_ "github.com/mattn/go-sqlite3"
+	//_ "github.com/mattn/go-sqlite3"
 )
 
 // initDB if testMode = true, everytime startup the app, it will rebuild database with schema and prepare mock data.
 func initDB(testMode bool) (*sql.DB, error) {
 	// for windows
-	//db, err := sql.Open("sqlite", "file:exg.db")
-	// for Mac
-	db, err := sql.Open("sqlite3", "/app/exg.db")
+	db, err := sql.Open("sqlite", "file:exg.db")
+	// for Unix
+	//db, err := sql.Open("sqlite3", "/app/exg.db")
 	if err != nil {
 		return nil, err
 	}

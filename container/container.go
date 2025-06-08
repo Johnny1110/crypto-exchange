@@ -82,12 +82,12 @@ func (c *Container) initRepositories() {
 
 func (c *Container) initServices() {
 	c.UserService = serviceImpl.NewIUserService(c.DB, c.UserRepo, c.BalanceRepo, c.CredentialCache)
-	c.BalanceService = serviceImpl.NewIBalanceService(c.DB, c.UserRepo, c.BalanceRepo)
 	c.OrderService = serviceImpl.NewIOrderService(c.DB, c.MatchingEngine, c.OrderRepo, c.TradeRepo, c.BalanceRepo)
 	c.OrderBookService = serviceImpl.NewIOrderBookService(c.MatchingEngine)
 	c.AdminService = serviceImpl.NewIAdminService(c.DB, c.UserRepo, c.BalanceRepo, c.OrderService)
 	c.CacheService = serviceImpl.NewCacheService()
 	c.MarketDataService = serviceImpl.NewMarketDataService(c.DB, c.TradeRepo, c.CacheService)
+	c.BalanceService = serviceImpl.NewIBalanceService(c.DB, c.UserRepo, c.BalanceRepo, c.MarketDataService)
 }
 
 // Cleanup clean
