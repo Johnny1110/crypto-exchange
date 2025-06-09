@@ -11,12 +11,8 @@ RUN make release
 FROM alpine:latest
 WORKDIR /app
 COPY --from=builder /app/dist/exchange .
-COPY --from=builder /app/exg.db .
+COPY --from=builder /app/app/exg.db .
 
-RUN adduser -D -s /bin/sh appuser
-# create logs dir
-RUN mkdir -p /app/logs && chown -R appuser:appuser /app
-USER appuser
 # setup logs dir as volume, for mount
 VOLUME ["/app/logs"]
 

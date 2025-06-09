@@ -30,6 +30,4 @@ bin
 
 node_modules
 
-exg.db
-
 dist
