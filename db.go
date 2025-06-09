@@ -9,7 +9,7 @@ import (
 
 // initDB if testMode = true, everytime startup the app, it will rebuild database with schema and prepare mock data.
 func initDB(testMode bool) (*sql.DB, error) {
-	db, err := sql.Open("sqlite", "/app/exg.db")
+	db, err := sql.Open("sqlite", "./app/exg.db")
 	if err != nil {
 		return nil, err
 	}

@@ -5,6 +5,7 @@ import (
 	"github.com/johnny1110/crypto-exchange/dto"
 	"github.com/johnny1110/crypto-exchange/engine-v2/book"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
+	"github.com/johnny1110/crypto-exchange/utils"
 )
 
 // OrderUpdateData represents data needed to update a dealt order
@@ -118,11 +119,14 @@ func (r *TradeSettlementResult) processBidUserBalances(bidSettlement *UserSettle
 		// If processing bid is incoming eatenOrder.
 		// For limit buy orders, unlock at order price and refund difference
 		unlockAmount := eatenOrder.Price * trade.Size
-		bidSettlement.QuoteAssetLocked -= unlockAmount
+		bidSettlement.QuoteAssetLocked -= bidSettlement.QuoteAssetLocked - unlockAmount
+		bidSettlement.QuoteAssetLocked = utils.RoundFloat(bidSettlement.QuoteAssetLocked)
 		bidSettlement.QuoteAssetAvailable += unlockAmount - tradeQuoteAmount // Refund overpayment
+		bidSettlement.QuoteAssetAvailable = utils.RoundFloat(bidSettlement.QuoteAssetAvailable)
 	} else {
 		// For other orders, unlock exact trade amount
 		bidSettlement.QuoteAssetLocked -= tradeQuoteAmount
+		bidSettlement.QuoteAssetLocked = utils.RoundFloat(bidSettlement.QuoteAssetLocked)
 	}
 
 	// Calculate fees and accumulate to sum.
@@ -131,21 +135,24 @@ func (r *TradeSettlementResult) processBidUserBalances(bidSettlement *UserSettle
 
 	// Add base asset received (deduct fees)
 	bidSettlement.BaseAssetAvailable += trade.Size - bidFees
+	bidSettlement.BaseAssetAvailable = utils.RoundFloat(bidSettlement.BaseAssetAvailable)
 
 	return bidFees
 }
 
 // processAskUserBalances handles ask user's balance updates and return ask fees (Quote Asset)
-func (r *TradeSettlementResult) processAskUserBalances(settlement *UserSettlementData, trade book.Trade, tradeQuoteAmount float64) (fees float64) {
+func (r *TradeSettlementResult) processAskUserBalances(askSettlement *UserSettlementData, trade book.Trade, tradeQuoteAmount float64) (fees float64) {
 	// Remove locked base asset (what ask user sells)
-	settlement.BaseAssetLocked -= trade.Size
+	askSettlement.BaseAssetLocked -= trade.Size
+	askSettlement.BaseAssetLocked = utils.RoundFloat(askSettlement.BaseAssetLocked)
 
 	// Calculate fees and accumulate to sum.
 	askFees := tradeQuoteAmount * trade.AskFeeRate
 	r.TotalQuoteFees += askFees
 
 	// Add quote asset received
-	settlement.QuoteAssetAvailable += tradeQuoteAmount - askFees
+	askSettlement.QuoteAssetAvailable += tradeQuoteAmount - askFees
+	askSettlement.QuoteAssetAvailable = utils.RoundFloat(askSettlement.QuoteAssetAvailable)
 
 	return askFees
 }
@@ -164,8 +171,8 @@ func (r *TradeSettlementResult) addOppositeOrderUpdate(trade book.Trade, eatenOr
 
 	r.OrderUpdates = append(r.OrderUpdates, &OrderUpdateData{
 		OrderID:                    oppositeOrderId,
-		RemainingSizeDecreasing:    trade.Size,
-		DealtQuoteAmountIncreasing: tradeQuoteAmount,
+		RemainingSizeDecreasing:    utils.RoundFloat(trade.Size),
+		DealtQuoteAmountIncreasing: utils.RoundFloat(tradeQuoteAmount),
 		FeesIncreasing:             feeIncreasing,
 	})
 }
@@ -193,8 +200,8 @@ func (r *TradeSettlementResult) addEatenOrderUpdate(eatenOrder *dto.Order) {
 
 		update = &OrderUpdateData{
 			OrderID:                    eatenOrder.ID,
-			RemainingSizeDecreasing:    r.TotalDealtSize,
-			DealtQuoteAmountIncreasing: r.TotalDealtAmt,
+			RemainingSizeDecreasing:    utils.RoundFloat(r.TotalDealtSize),
+			DealtQuoteAmountIncreasing: utils.RoundFloat(r.TotalDealtAmt),
 			FeesIncreasing:             fees,
 		}
 	}

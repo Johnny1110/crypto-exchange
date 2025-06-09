@@ -31,3 +31,5 @@ bin
 node_modules
 
 dist
+
+logs

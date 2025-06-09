@@ -1,6 +1,7 @@
 package model
 
 import (
+	"github.com/johnny1110/crypto-exchange/utils"
 	"time"
 )
 
@@ -88,11 +89,11 @@ func (o *Order) GetStatus() OrderStatus {
 	if o.OriginalSize == o.RemainingSize {
 		return ORDER_STATUS_NEW
 	}
+	if o.RemainingSize <= utils.Scale {
+		return ORDER_STATUS_FILLED
+	}
 	if o.RemainingSize > 0 && o.RemainingSize < o.OriginalSize {
 		return ORDER_STATUS_PARTIAL
-	}
-	if o.RemainingSize == 0 {
-		return ORDER_STATUS_FILLED
 	}
 	return ORDER_STATUS_CANCELED
 }

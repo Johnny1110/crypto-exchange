@@ -12,6 +12,7 @@ import (
 	"github.com/johnny1110/crypto-exchange/service"
 	"github.com/johnny1110/crypto-exchange/service/serviceHelper"
 	"github.com/johnny1110/crypto-exchange/settings"
+	"github.com/johnny1110/crypto-exchange/utils"
 	"github.com/labstack/gommon/log"
 	"time"
 )
@@ -21,6 +22,7 @@ var (
 	ErrOrderNotFound         = errors.New("order not found")
 	ErrOrderNotBelongsToUser = errors.New("order not belongs to user")
 	ErrInsufficientBalance   = errors.New("insufficient balance")
+	CanNotCancelClosedOrder  = errors.New("can not closed cancel order")
 	UnknownError             = errors.New("unknown error")
 )
 
@@ -173,7 +175,7 @@ func (s *orderService) executeOrderPlacementPhase(ctx context.Context, orderCtx 
 		// 4. Update order status from engine result
 		orderCtx.SyncTradeResult(engineOrder, trades)
 
-		// 5. Save trade records
+		// 5. Save trade records (TODO: async to TradeService to make kines)
 		if len(orderCtx.Trades) > 0 {
 			if err := s.tradeRepo.BatchInsert(ctx, tx, trades); err != nil {
 				log.Errorf("[executeOrderPlacementPhase] BatchInsert Trades error : %v", err)
@@ -258,9 +260,14 @@ func (s *orderService) CancelOrder(ctx context.Context, userID, orderID string) 
 		return nil, ErrOrderNotBelongsToUser
 	}
 
+	if orderDto.Status != model.ORDER_STATUS_NEW && orderDto.Status != model.ORDER_STATUS_PARTIAL {
+		return nil, CanNotCancelClosedOrder
+	}
+
 	engineOrder, err := s.engine.CancelOrder(orderDto.Market, orderID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to cancel order in engine: %w", err)
+		log.Errorf("[OrderService] CancelOrder failed: %v", err)
+		return nil, fmt.Errorf("failed to cancel order in engine")
 	}
 
 	err = WithTx(ctx, s.db, func(tx *sql.Tx) error {
@@ -394,23 +401,27 @@ func validatePlacingOrderReq(user *dto.User, market string, req *dto.OrderReq) e
 	}
 
 	// Validate Ask orders
-	if req.Side == model.ASK && req.Size <= 0 {
+	if req.Side == model.ASK && req.Size <= utils.Scale {
+		log.Warnf("[OrderService] Validate PlacingOrder ASK Req failed, size:%v", req.Size)
 		return errors.New("ask order size must be greater than zero")
 	}
 
 	// Validate Bid orders
 	if req.Side == model.BID {
-		if req.OrderType == model.MARKET && req.QuoteAmount <= 0 {
-			return errors.New("bid market order quote amount must be greater than zero")
+		if req.OrderType == model.MARKET && req.QuoteAmount <= utils.Scale {
+			log.Warnf("[OrderService] Validate PlacingOrder MARKET BID Req failed, quote-amount:%v", req.QuoteAmount)
+			return errors.New("bid market order quote amount invalid")
 		}
-		if req.OrderType == model.LIMIT && req.Size <= 0 {
-			return errors.New("bid limit order size must be greater than zero")
+		if req.OrderType == model.LIMIT && req.Size <= utils.Scale {
+			log.Warnf("[OrderService] Validate PlacingOrder LIMIT BID Req failed, size:%v", req.Size)
+			return errors.New("bid limit order size invalid")
 		}
 	}
 
 	// Validate Limit orders
-	if req.OrderType == model.LIMIT && req.Price <= 0 {
-		return errors.New("limit order price must be greater than zero")
+	if req.OrderType == model.LIMIT && req.Price <= utils.Scale {
+		log.Warnf("[OrderService] Validate PlacingOrder LIMIT Req failed, price:%v", req.Price)
+		return errors.New("limit order price invalid")
 	}
 
 	return nil
