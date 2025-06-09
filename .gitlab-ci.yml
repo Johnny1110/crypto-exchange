@@ -30,9 +30,13 @@ deploy-job:
     before_script:
         - docker info # 確認 Docker 可用
         - mkdir -p $MNT_APP_LOG_PATH # 確保宿主機目錄存在
+        - echo "Cleaning Docker system..."
+        - docker system prune -f # 清理未使用的 Docker 資源
+        - docker builder prune -f # 清理建構快取
+        - df -h # 檢查磁碟空間
     script: #
         - echo "Creating Docker image..."
-        - docker build -t $IMAGE_NAME .    # 建構鏡像
+        - docker build --no-cache -t $IMAGE_NAME .   # 建構鏡像
         - echo "Stop and delete latest container..."
         - docker stop $APP_CONTAINER_NAME || true # 停止容器（如果存在）
         - docker rm $APP_CONTAINER_NAME || true # 刪除容器（如果存在）
