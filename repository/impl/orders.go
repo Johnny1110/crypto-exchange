@@ -7,6 +7,7 @@ import (
 	"github.com/johnny1110/crypto-exchange/dto"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
 	"github.com/johnny1110/crypto-exchange/repository"
+	"github.com/johnny1110/crypto-exchange/utils"
 	"math"
 	"strings"
 	"time"
@@ -238,7 +239,7 @@ func (o orderRepository) SyncTradeMatchingResult(ctx context.Context, db reposit
 		avg_dealt_price = (quote_amount + ?) / (original_size - remaining_size + ?),
 		status = CASE           
 		    					WHEN original_size = 0 THEN ?
-			                  	WHEN remaining_size - ? = 0 THEN ?
+			                  	WHEN remaining_size - ? < ? THEN ?
 								WHEN remaining_size - ? < original_size THEN ?
 								ELSE status END
                    , fees = fees + ?
@@ -252,6 +253,7 @@ func (o orderRepository) SyncTradeMatchingResult(ctx context.Context, db reposit
 		decreasingSize,
 		model.ORDER_STATUS_FILLED,
 		decreasingSize,
+		utils.Scale,
 		model.ORDER_STATUS_FILLED,
 		decreasingSize,
 		model.ORDER_STATUS_PARTIAL,

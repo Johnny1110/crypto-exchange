@@ -6,6 +6,7 @@ import (
 	"github.com/johnny1110/crypto-exchange/engine-v2/book"
 	"github.com/johnny1110/crypto-exchange/engine-v2/core"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
+	"github.com/johnny1110/crypto-exchange/utils"
 )
 
 // ParseMarket extracts base and quote assets.html from market
@@ -49,7 +50,7 @@ func DetermineFreezeValue(req *dto.OrderReq, baseAsset, quoteAsset string) (stri
 func calculateBidFreezeValue(req *dto.OrderReq, quoteAsset string) (string, float64) {
 	switch req.OrderType {
 	case model.LIMIT:
-		return quoteAsset, req.Price * req.Size
+		return quoteAsset, utils.RoundFloat(req.Price * req.Size)
 	case model.MARKET:
 		return quoteAsset, req.QuoteAmount
 	default:
@@ -119,7 +120,7 @@ func CalculateRefund(engine *core.MatchingEngine, market string, engineOrder *mo
 
 	switch engineOrder.Side {
 	case model.BID:
-		return quoteAsset, engineOrder.Price * engineOrder.RemainingSize, nil
+		return quoteAsset, utils.RoundFloat(engineOrder.Price * engineOrder.RemainingSize), nil
 	case model.ASK:
 		return baseAsset, engineOrder.RemainingSize, nil
 	default:

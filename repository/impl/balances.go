@@ -124,7 +124,7 @@ func (b balanceRepository) ModifyLockedByUserIdAndAsset(ctx context.Context, db 
 func (b balanceRepository) LockedByUserIdAndAsset(ctx context.Context, db repository.DBExecutor, userID, asset string, amount float64) error {
 	// atomic update：decrease available and increase locked
 	query := `UPDATE balances 
-			  SET available = available - ?, locked = locked + ? 
+			  SET available = MAX(0, available - ?), locked = locked + ? 
 			  WHERE user_id = ? AND asset = ? AND available >= ?`
 
 	result, err := db.ExecContext(ctx, query, amount, amount, userID, asset, amount)
@@ -148,10 +148,10 @@ func (b balanceRepository) LockedByUserIdAndAsset(ctx context.Context, db reposi
 func (b balanceRepository) UnlockedByUserIdAndAsset(ctx context.Context, db repository.DBExecutor, userID, asset string, amount float64) error {
 	// atomic update access
 	query := `UPDATE balances 
-			  SET locked = locked - ?, available = available + ? 
-			  WHERE user_id = ? AND asset = ? AND locked >= ?`
+			  SET locked = MAX(0, locked - ?), available = available + ? 
+			  WHERE user_id = ? AND asset = ?`
 
-	result, err := db.ExecContext(ctx, query, amount, amount, userID, asset, amount)
+	result, err := db.ExecContext(ctx, query, amount, amount, userID, asset)
 	if err != nil {
 		return fmt.Errorf("failed to unlock balance: %w", err)
 	}
