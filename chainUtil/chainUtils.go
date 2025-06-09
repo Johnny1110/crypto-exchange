@@ -111,7 +111,7 @@ func CheckBalance(client *ethclient.Client, symbol string, addressStr string, am
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("Address: %s, ETH Balance: %s", address.Hex(), rawBalance)
+		//fmt.Println("Address: %s, ETH Balance: %s", address.Hex(), rawBalance)
 
 		// convert Wei -> Ether
 		balFloat := new(big.Float).Quo(

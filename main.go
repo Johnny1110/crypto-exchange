@@ -8,6 +8,11 @@ import (
 )
 
 func main() {
+	err := initLogger("logs", log.INFO)
+	if err != nil {
+		panic(err)
+	}
+
 	db, err := initDB(false)
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
@@ -29,16 +34,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to recover orderbook: %v", err)
 	}
-	// It will iterate all the market, and do refresh the OrderBook snapshot
-	//engine.StartSnapshotRefresher()
 
 	startUpAllScheduler(c)
-
-	// TODO: remove this after testing
-	//err = c.AdminService.TestAutoMakeMarket(context.Background())
-	//if err != nil {
-	//	panic("failed to TestAutoMakeMarket")
-	//}
 
 	log.Infof("Exchange Server starting on :8080")
 	if err := router.Run(":8080"); err != nil {

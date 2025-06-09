@@ -9,11 +9,31 @@ import (
 	"github.com/johnny1110/crypto-exchange/dto"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
 	"github.com/labstack/gommon/log"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
+
+func initLogger(logDir string, level log.Lvl) error {
+	err := os.MkdirAll(logDir, 0755)
+	if err != nil {
+		return err
+	}
+
+	today := time.Now().Format("2006-01-02")
+	logFile, _ := os.OpenFile(
+		fmt.Sprintf("%s/app_%s.log", logDir, today),
+		os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+
+	multiWriter := io.MultiWriter(os.Stdout, logFile)
+	log.SetOutput(multiWriter)
+
+	log.SetLevel(level)
+	return nil
+}
 
 func runSQLFilesWithTransaction(db *sql.DB) error {
 	sqlFiles := []string{
@@ -123,7 +143,6 @@ func startUpAllScheduler(c *container.Container) {
 		panic(err)
 	}
 
-	//TODO: bugged, no cancel order
 	err = c.LQDTScheduler.Start()
 	if err != nil {
 		panic(err)
