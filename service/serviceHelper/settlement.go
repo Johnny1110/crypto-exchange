@@ -119,7 +119,7 @@ func (r *TradeSettlementResult) processBidUserBalances(bidSettlement *UserSettle
 		// If processing bid is incoming eatenOrder.
 		// For limit buy orders, unlock at order price and refund difference
 		unlockAmount := eatenOrder.Price * trade.Size
-		bidSettlement.QuoteAssetLocked -= bidSettlement.QuoteAssetLocked - unlockAmount
+		bidSettlement.QuoteAssetLocked -= unlockAmount
 		bidSettlement.QuoteAssetLocked = utils.RoundFloat(bidSettlement.QuoteAssetLocked)
 		bidSettlement.QuoteAssetAvailable += unlockAmount - tradeQuoteAmount // Refund overpayment
 		bidSettlement.QuoteAssetAvailable = utils.RoundFloat(bidSettlement.QuoteAssetAvailable)
