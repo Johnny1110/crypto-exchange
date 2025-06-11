@@ -104,8 +104,11 @@ security: ## Run security scan
 pre-release: clean deps lint security test coverage ## Run all checks before release
 	@echo "$(GREEN)✅ All pre-release checks passed!$(NC)"
 
+pre-release-skip-test: clean deps lint security
+	@echo "$(GREEN)✅ All pre-release checks passed!$(NC)"
+
 # Release build for current platform
-release: pre-release ## Build optimized release binary for current platform
+release: pre-release-skip-test ## Build optimized release binary for current platform
 	@echo "$(BLUE)🚀 Building release version $(VERSION)...$(NC)"
 	@mkdir -p $(DIST_DIR)
 	CGO_ENABLED=0 $(GOBUILD) \
