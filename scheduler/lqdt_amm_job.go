@@ -50,7 +50,7 @@ func NewLQDTScheduler(ammExgFuncProxy amm.IAmmExchangeFuncProxy, service service
 	}
 }
 
-func (L LQDTScheduler) Start() error {
+func (L *LQDTScheduler) Start() error {
 	ticker := time.NewTicker(L.duration)
 	log.Info("[LQDTScheduler] start")
 
@@ -74,7 +74,7 @@ func (L LQDTScheduler) Start() error {
 	return nil
 }
 
-func (L LQDTScheduler) Stop() error {
+func (L *LQDTScheduler) Stop() error {
 	//TODO implement me
 	panic("implement me")
 }
