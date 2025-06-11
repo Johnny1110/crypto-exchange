@@ -10,6 +10,7 @@ import (
 	"github.com/johnny1110/crypto-exchange/service"
 	serviceImpl "github.com/johnny1110/crypto-exchange/service/impl"
 	"github.com/johnny1110/crypto-exchange/service/impl/amm"
+	"github.com/johnny1110/crypto-exchange/service/impl/metrics"
 	"log"
 	"net/http"
 	"time"
@@ -40,9 +41,13 @@ type Container struct {
 	MatchingEngine  *core.MatchingEngine
 
 	// Scheduler
+	SchedulerReporter          *scheduler.SchedulerReporter
 	MarketDataScheduler        scheduler.Scheduler
 	OrderBookSnapshotScheduler scheduler.Scheduler
 	LQDTScheduler              scheduler.Scheduler
+
+	// Metrics
+	MetricsService *metrics.MetricService
 
 	// Proxy
 	AmmExFuncProxy amm.IAmmExchangeFuncProxy
@@ -69,6 +74,9 @@ func NewContainer(db *sql.DB, engine *core.MatchingEngine) *Container {
 
 	// init Scheduler
 	c.initScheduler()
+
+	// init Metrics
+	c.initMetrics()
 
 	return c
 }
@@ -103,6 +111,13 @@ func (c *Container) initScheduler() {
 	c.MarketDataScheduler = scheduler.NewMarketDataScheduler(c.MarketDataService, c.CacheService, 30*time.Second)
 	c.OrderBookSnapshotScheduler = scheduler.NewOrderBookSnapshotScheduler(c.MatchingEngine, 300*time.Millisecond)
 	c.LQDTScheduler = scheduler.NewLQDTScheduler(c.AmmExFuncProxy, c.UserService, 5*time.Minute)
+
+	schedulers := make([]scheduler.Scheduler, 0, 3)
+	schedulers = append(schedulers, c.MarketDataScheduler)
+	schedulers = append(schedulers, c.OrderBookSnapshotScheduler)
+	schedulers = append(schedulers, c.LQDTScheduler)
+
+	c.SchedulerReporter = scheduler.NewSchedulerReporter(schedulers)
 }
 
 func (c *Container) initProxy() {
@@ -111,4 +126,8 @@ func (c *Container) initProxy() {
 		&http.Client{
 			Timeout: 30 * time.Second,
 		})
+}
+
+func (c *Container) initMetrics() {
+	c.MetricsService = metrics.NewMetricService(c.OrderBookService, c.OrderService, c.SchedulerReporter)
 }

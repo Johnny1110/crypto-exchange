@@ -121,43 +121,49 @@
 				
 				<option value="file32">github.com/johnny1110/crypto-exchange/scheduler/orderbook_snapshot_job.go (0.0%)</option>
 				
-				<option value="file33">github.com/johnny1110/crypto-exchange/security/credential.go (0.0%)</option>
+				<option value="file33">github.com/johnny1110/crypto-exchange/scheduler/scheduler_reporter.go (0.0%)</option>
 				
-				<option value="file34">github.com/johnny1110/crypto-exchange/service/impl/admins.go (0.0%)</option>
+				<option value="file34">github.com/johnny1110/crypto-exchange/security/credential.go (0.0%)</option>
 				
-				<option value="file35">github.com/johnny1110/crypto-exchange/service/impl/amm/amm_strategies.go (0.0%)</option>
+				<option value="file35">github.com/johnny1110/crypto-exchange/service/impl/admins.go (0.0%)</option>
 				
-				<option value="file36">github.com/johnny1110/crypto-exchange/service/impl/amm/provide_liquidity_amm.go (26.9%)</option>
+				<option value="file36">github.com/johnny1110/crypto-exchange/service/impl/amm/amm_strategies.go (0.0%)</option>
 				
-				<option value="file37">github.com/johnny1110/crypto-exchange/service/impl/amm/strategy_helper.go (2.1%)</option>
+				<option value="file37">github.com/johnny1110/crypto-exchange/service/impl/amm/provide_liquidity_amm.go (26.9%)</option>
 				
-				<option value="file38">github.com/johnny1110/crypto-exchange/service/impl/amm/test/fale_orders.go (0.0%)</option>
+				<option value="file38">github.com/johnny1110/crypto-exchange/service/impl/amm/strategy_helper.go (2.1%)</option>
 				
-				<option value="file39">github.com/johnny1110/crypto-exchange/service/impl/amm/test/mock.go (18.2%)</option>
+				<option value="file39">github.com/johnny1110/crypto-exchange/service/impl/amm/test/fale_orders.go (0.0%)</option>
 				
-				<option value="file40">github.com/johnny1110/crypto-exchange/service/impl/balances.go (0.0%)</option>
+				<option value="file40">github.com/johnny1110/crypto-exchange/service/impl/amm/test/mock.go (18.2%)</option>
 				
-				<option value="file41">github.com/johnny1110/crypto-exchange/service/impl/caches.go (0.0%)</option>
+				<option value="file41">github.com/johnny1110/crypto-exchange/service/impl/balances.go (0.0%)</option>
 				
-				<option value="file42">github.com/johnny1110/crypto-exchange/service/impl/markets.go (0.0%)</option>
+				<option value="file42">github.com/johnny1110/crypto-exchange/service/impl/caches.go (0.0%)</option>
 				
-				<option value="file43">github.com/johnny1110/crypto-exchange/service/impl/orderbooks.go (0.0%)</option>
+				<option value="file43">github.com/johnny1110/crypto-exchange/service/impl/markets.go (0.0%)</option>
 				
-				<option value="file44">github.com/johnny1110/crypto-exchange/service/impl/orders.go (0.0%)</option>
+				<option value="file44">github.com/johnny1110/crypto-exchange/service/impl/metrics/metrics.go (0.0%)</option>
 				
-				<option value="file45">github.com/johnny1110/crypto-exchange/service/impl/txn.go (0.0%)</option>
+				<option value="file45">github.com/johnny1110/crypto-exchange/service/impl/orderbooks.go (0.0%)</option>
 				
-				<option value="file46">github.com/johnny1110/crypto-exchange/service/impl/users.go (0.0%)</option>
+				<option value="file46">github.com/johnny1110/crypto-exchange/service/impl/orders.go (0.0%)</option>
 				
-				<option value="file47">github.com/johnny1110/crypto-exchange/service/serviceHelper/helpers.go (0.0%)</option>
+				<option value="file47">github.com/johnny1110/crypto-exchange/service/impl/txn.go (0.0%)</option>
 				
-				<option value="file48">github.com/johnny1110/crypto-exchange/service/serviceHelper/settlement.go (0.0%)</option>
+				<option value="file48">github.com/johnny1110/crypto-exchange/service/impl/users.go (0.0%)</option>
 				
-				<option value="file49">github.com/johnny1110/crypto-exchange/settings/cache_key.go (0.0%)</option>
+				<option value="file49">github.com/johnny1110/crypto-exchange/service/serviceHelper/helpers.go (0.0%)</option>
 				
-				<option value="file50">github.com/johnny1110/crypto-exchange/settings/settings.go (0.0%)</option>
+				<option value="file50">github.com/johnny1110/crypto-exchange/service/serviceHelper/settlement.go (0.0%)</option>
 				
-				<option value="file51">github.com/johnny1110/crypto-exchange/startup_helper.go (0.0%)</option>
+				<option value="file51">github.com/johnny1110/crypto-exchange/settings/cache_key.go (0.0%)</option>
+				
+				<option value="file52">github.com/johnny1110/crypto-exchange/settings/settings.go (0.0%)</option>
+				
+				<option value="file53">github.com/johnny1110/crypto-exchange/startup_helper.go (0.0%)</option>
+				
+				<option value="file54">github.com/johnny1110/crypto-exchange/utils/math.go (0.0%)</option>
 				
 				</select>
 			</div>
@@ -355,6 +361,7 @@ import (
         "github.com/johnny1110/crypto-exchange/service"
         serviceImpl "github.com/johnny1110/crypto-exchange/service/impl"
         "github.com/johnny1110/crypto-exchange/service/impl/amm"
+        "github.com/johnny1110/crypto-exchange/service/impl/metrics"
         "log"
         "net/http"
         "time"
@@ -385,9 +392,13 @@ type Container struct {
         MatchingEngine  *core.MatchingEngine
 
         // Scheduler
+        SchedulerReporter          *scheduler.SchedulerReporter
         MarketDataScheduler        scheduler.Scheduler
         OrderBookSnapshotScheduler scheduler.Scheduler
         LQDTScheduler              scheduler.Scheduler
+
+        // Metrics
+        MetricsService *metrics.MetricService
 
         // Proxy
         AmmExFuncProxy amm.IAmmExchangeFuncProxy
@@ -414,6 +425,9 @@ func NewContainer(db *sql.DB, engine *core.MatchingEngine) *Container <span clas
 
         // init Scheduler
         c.initScheduler()
+
+        // init Metrics
+        c.initMetrics()
 
         return c
 }</span>
@@ -447,7 +461,14 @@ func (c *Container) Cleanup() <span class="cov0" title="0">{
 func (c *Container) initScheduler() <span class="cov0" title="0">{
         c.MarketDataScheduler = scheduler.NewMarketDataScheduler(c.MarketDataService, c.CacheService, 30*time.Second)
         c.OrderBookSnapshotScheduler = scheduler.NewOrderBookSnapshotScheduler(c.MatchingEngine, 300*time.Millisecond)
-        c.LQDTScheduler = scheduler.NewLQDTScheduler(c.AmmExFuncProxy, c.UserService, 30*time.Second)
+        c.LQDTScheduler = scheduler.NewLQDTScheduler(c.AmmExFuncProxy, c.UserService, 5*time.Minute)
+
+        schedulers := make([]scheduler.Scheduler, 0, 3)
+        schedulers = append(schedulers, c.MarketDataScheduler)
+        schedulers = append(schedulers, c.OrderBookSnapshotScheduler)
+        schedulers = append(schedulers, c.LQDTScheduler)
+
+        c.SchedulerReporter = scheduler.NewSchedulerReporter(schedulers)
 }</span>
 
 func (c *Container) initProxy() <span class="cov0" title="0">{
@@ -456,6 +477,10 @@ func (c *Container) initProxy() <span class="cov0" title="0">{
                 &amp;http.Client{
                         Timeout: 30 * time.Second,
                 })
+}</span>
+
+func (c *Container) initMetrics() <span class="cov0" title="0">{
+        c.MetricsService = metrics.NewMetricService(c.OrderBookService, c.OrderService, c.SchedulerReporter)
 }</span>
 </pre>
 		
@@ -861,7 +886,7 @@ import (
 
 // initDB if testMode = true, everytime startup the app, it will rebuild database with schema and prepare mock data.
 func initDB(testMode bool) (*sql.DB, error) <span class="cov0" title="0">{
-        db, err := sql.Open("sqlite", "/Users/johnny.wang/frizo/crypto-exchange/dist/exg.db")
+        db, err := sql.Open("sqlite", "./app/exg.db")
         if err != nil </span><span class="cov0" title="0">{
                 return nil, err
         }</span>
@@ -1881,7 +1906,7 @@ func NewBookSide(isBid bool) *BookSide <span class="cov4" title="22">{
 // AddOrderNode inserts a node at a given price level, creating the level if needed.
 func (bs *BookSide) AddOrderNode(price float64, node *model.OrderNode) <span class="cov10" title="1079">{
         v, ok := bs.priceLevels.Get(price)
-        if !ok </span><span class="cov6" title="81">{
+        if !ok </span><span class="cov6" title="80">{
                 deque := util.NewOrderNodeDeque()
                 bs.priceLevels.Put(price, deque)
                 v = deque
@@ -1908,7 +1933,7 @@ func (bs *BookSide) RemoveOrderNode(price float64, node *model.OrderNode) error 
         }</span>
 
         // remove price level if current price level is empty
-        <span class="cov9" title="1003">if deque.IsEmpty() </span><span class="cov4" title="14">{
+        <span class="cov9" title="1003">if deque.IsEmpty() </span><span class="cov4" title="13">{
                 bs.priceLevels.Remove(price)
         }</span>
 
@@ -2686,7 +2711,6 @@ import (
         "github.com/johnny1110/crypto-exchange/engine-v2/model"
         "github.com/labstack/gommon/log"
         "sync"
-        "time"
 )
 
 type MatchingEngine struct {
@@ -2733,7 +2757,7 @@ func (e *MatchingEngine) PlaceOrder(market string, orderType model.OrderType, or
         if err != nil </span><span class="cov0" title="0">{
                 return nil, err
         }</span>
-        <span class="cov0" title="0">log.Infof("[Engine] PlaceOrder, market: [%s], type:[%v], mode:[%v], side:[%v] orderId:[%s], prize:[%v], size:[%v], quoteAmt:[%v], feeRate:[%.4f]%",
+        <span class="cov0" title="0">log.Debugf("[Engine] PlaceOrder, market: [%s], type:[%v], mode:[%v], side:[%v] orderId:[%s], prize:[%v], size:[%v], quoteAmt:[%v], feeRate:[%.4f]%",
                 market, orderType, order.Mode, order.Side, order.ID, order.Price, order.RemainingSize, order.QuoteAmount, order.FeeRate*100)
 
         return ob.PlaceOrder(orderType, order)</span>
@@ -2744,7 +2768,7 @@ func (e *MatchingEngine) CancelOrder(market string, orderID string) (*model.Orde
         if err != nil </span><span class="cov0" title="0">{
                 return nil, err
         }</span>
-        <span class="cov0" title="0">log.Infof("[Engine] CancelOrder, market:[%s], orderID:[%s]", market, orderID)
+        <span class="cov0" title="0">log.Debugf("[Engine] CancelOrder, market:[%s], orderID:[%s]", market, orderID)
         return ob.CancelOrder(orderID)</span>
 }
 
@@ -2757,24 +2781,6 @@ func (e *MatchingEngine) Snapshot(market string) (bidPrice, bidSize, askPrice, a
         <span class="cov0" title="0">bidPrice, bidSize, _ = ob.BestBid()
         askPrice, askSize, _ = ob.BestAsk()
         return</span>
-}
-
-func (e *MatchingEngine) StartSnapshotRefresher() <span class="cov0" title="0">{
-
-        ticker := time.NewTicker(300 * time.Millisecond)
-
-        go func() </span><span class="cov0" title="0">{
-                for range ticker.C </span><span class="cov0" title="0">{
-                        for _, market := range e.Markets() </span><span class="cov0" title="0">{
-                                ob, err := e.GetOrderBook(market)
-                                if err != nil </span><span class="cov0" title="0">{
-                                        log.Errorf("[Engine] StartSnapshotRefresher: GetOrderBook err: %v", err)
-                                }</span> else<span class="cov0" title="0"> {
-                                        ob.RefreshSnapshot()
-                                }</span>
-                        }
-                }
-        }()
 }
 
 func (e *MatchingEngine) RecoverOrderBook(market string, orders []*model.Order, latestPrice float64) error <span class="cov0" title="0">{
@@ -2864,6 +2870,7 @@ func (mgr *MarketManager) GetAssets(market string) (string, string, error) <span
 		<pre class="file" id="file21" style="display: none">package model
 
 import (
+        "github.com/johnny1110/crypto-exchange/utils"
         "time"
 )
 
@@ -2951,11 +2958,11 @@ func (o *Order) GetStatus() OrderStatus <span class="cov0" title="0">{
         if o.OriginalSize == o.RemainingSize </span><span class="cov0" title="0">{
                 return ORDER_STATUS_NEW
         }</span>
+        <span class="cov0" title="0">if o.RemainingSize &lt;= utils.Scale </span><span class="cov0" title="0">{
+                return ORDER_STATUS_FILLED
+        }</span>
         <span class="cov0" title="0">if o.RemainingSize &gt; 0 &amp;&amp; o.RemainingSize &lt; o.OriginalSize </span><span class="cov0" title="0">{
                 return ORDER_STATUS_PARTIAL
-        }</span>
-        <span class="cov0" title="0">if o.RemainingSize == 0 </span><span class="cov0" title="0">{
-                return ORDER_STATUS_FILLED
         }</span>
         <span class="cov0" title="0">return ORDER_STATUS_CANCELED</span>
 }
@@ -3019,7 +3026,7 @@ type OrderNodeDeque struct {
         volume     float64
 }
 
-func NewOrderNodeDeque() *OrderNodeDeque <span class="cov6" title="85">{
+func NewOrderNodeDeque() *OrderNodeDeque <span class="cov6" title="84">{
         return &amp;OrderNodeDeque{
                 size:   0,
                 volume: 0,
@@ -3028,10 +3035,10 @@ func NewOrderNodeDeque() *OrderNodeDeque <span class="cov6" title="85">{
 
 // PushBack adds a node to the end of the deque in O(1) time.
 func (dq *OrderNodeDeque) PushBack(node *model.OrderNode) <span class="cov10" title="1079">{
-        if dq.tail == nil </span><span class="cov6" title="81">{
+        if dq.tail == nil </span><span class="cov6" title="80">{
                 dq.head = node
                 dq.tail = node
-        }</span> else<span class="cov9" title="998"> {
+        }</span> else<span class="cov9" title="999"> {
                 node.Next = nil
                 node.Prev = dq.tail
                 dq.tail.Next = node
@@ -3058,20 +3065,20 @@ func (dq *OrderNodeDeque) PushHead(node *model.OrderNode) <span class="cov2" tit
 
 // PopFront removes and returns the node at the front of the deque in O(1) time.
 // Returns nil and an error if the deque is empty.
-func (dq *OrderNodeDeque) PopFront() (*model.OrderNode, error) <span class="cov9" title="794">{
+func (dq *OrderNodeDeque) PopFront() (*model.OrderNode, error) <span class="cov9" title="947">{
         if dq.head == nil </span><span class="cov0" title="0">{
                 return nil, errors.New("OrderNodeDeque is empty")
         }</span>
-        <span class="cov9" title="794">node := dq.head
+        <span class="cov9" title="947">node := dq.head
 
-        if dq.size == 1 </span><span class="cov5" title="24">{
+        if dq.size == 1 </span><span class="cov5" title="23">{
                 dq.head = nil
                 dq.tail = nil
-        }</span> else<span class="cov9" title="770"> {
+        }</span> else<span class="cov9" title="924"> {
                 dq.head = dq.head.Next
                 dq.head.Prev = nil
         }</span>
-        <span class="cov9" title="794">dq.size--
+        <span class="cov9" title="947">dq.size--
         dq.volume -= node.Size()
 
         // clean up the popped node.
@@ -3097,13 +3104,13 @@ func (dq *OrderNodeDeque) Remove(node *model.OrderNode) error <span class="cov9"
         }</span>
 
         // If node is head
-        <span class="cov9" title="1003">if dq.head == node </span><span class="cov9" title="783">{
+        <span class="cov9" title="1003">if dq.head == node </span><span class="cov9" title="936">{
                 _, err := dq.PopFront()
                 return err
         }</span>
 
         // if node is tail
-        <span class="cov7" title="220">if dq.tail == node </span><span class="cov6" title="58">{
+        <span class="cov6" title="67">if dq.tail == node </span><span class="cov5" title="48">{
                 dq.tail = node.Prev
                 dq.tail.Next = nil
                 node.Prev = nil
@@ -3113,7 +3120,7 @@ func (dq *OrderNodeDeque) Remove(node *model.OrderNode) error <span class="cov9"
         }</span>
 
         // Node is in middle
-        <span class="cov7" title="162">node.Prev.Next = node.Next
+        <span class="cov4" title="19">node.Prev.Next = node.Next
         node.Next.Prev = node.Prev
         node.Next = nil
         node.Prev = nil
@@ -3184,16 +3191,8 @@ func main() <span class="cov0" title="0">{
         if err != nil </span><span class="cov0" title="0">{
                 log.Fatalf("failed to recover orderbook: %v", err)
         }</span>
-        // It will iterate all the market, and do refresh the OrderBook snapshot
-        //engine.StartSnapshotRefresher()
 
         <span class="cov0" title="0">startUpAllScheduler(c)
-
-        // TODO: remove this after testing
-        //err = c.AdminService.TestAutoMakeMarket(context.Background())
-        //if err != nil {
-        //        panic("failed to TestAutoMakeMarket")
-        //}
 
         log.Infof("Exchange Server starting on :8080")
         if err := router.Run(":8080"); err != nil </span><span class="cov0" title="0">{
@@ -3441,7 +3440,7 @@ func (b balanceRepository) ModifyLockedByUserIdAndAsset(ctx context.Context, db 
 func (b balanceRepository) LockedByUserIdAndAsset(ctx context.Context, db repository.DBExecutor, userID, asset string, amount float64) error <span class="cov0" title="0">{
         // atomic update：decrease available and increase locked
         query := `UPDATE balances 
-                          SET available = available - ?, locked = locked + ? 
+                          SET available = MAX(0, available - ?), locked = locked + ? 
                           WHERE user_id = ? AND asset = ? AND available &gt;= ?`
 
         result, err := db.ExecContext(ctx, query, amount, amount, userID, asset, amount)
@@ -3465,10 +3464,10 @@ func (b balanceRepository) LockedByUserIdAndAsset(ctx context.Context, db reposi
 func (b balanceRepository) UnlockedByUserIdAndAsset(ctx context.Context, db repository.DBExecutor, userID, asset string, amount float64) error <span class="cov0" title="0">{
         // atomic update access
         query := `UPDATE balances 
-                          SET locked = locked - ?, available = available + ? 
-                          WHERE user_id = ? AND asset = ? AND locked &gt;= ?`
+                          SET locked = MAX(0, locked - ?), available = available + ? 
+                          WHERE user_id = ? AND asset = ?`
 
-        result, err := db.ExecContext(ctx, query, amount, amount, userID, asset, amount)
+        result, err := db.ExecContext(ctx, query, amount, amount, userID, asset)
         if err != nil </span><span class="cov0" title="0">{
                 return fmt.Errorf("failed to unlock balance: %w", err)
         }</span>
@@ -3542,6 +3541,7 @@ import (
         "github.com/johnny1110/crypto-exchange/dto"
         "github.com/johnny1110/crypto-exchange/engine-v2/model"
         "github.com/johnny1110/crypto-exchange/repository"
+        "github.com/johnny1110/crypto-exchange/utils"
         "math"
         "strings"
         "time"
@@ -3773,7 +3773,7 @@ func (o orderRepository) SyncTradeMatchingResult(ctx context.Context, db reposit
                 avg_dealt_price = (quote_amount + ?) / (original_size - remaining_size + ?),
                 status = CASE           
                                                             WHEN original_size = 0 THEN ?
-                                                  WHEN remaining_size - ? = 0 THEN ?
+                                                  WHEN remaining_size - ? &lt; ? THEN ?
                                                                 WHEN remaining_size - ? &lt; original_size THEN ?
                                                                 ELSE status END
                    , fees = fees + ?
@@ -3787,6 +3787,7 @@ func (o orderRepository) SyncTradeMatchingResult(ctx context.Context, db reposit
                 decreasingSize,
                 model.ORDER_STATUS_FILLED,
                 decreasingSize,
+                utils.Scale,
                 model.ORDER_STATUS_FILLED,
                 decreasingSize,
                 model.ORDER_STATUS_PARTIAL,
@@ -4117,6 +4118,24 @@ func (o orderRepository) PaginationQuery(ctx context.Context, db repository.DBEx
 
         return response, nil</span>
 }
+
+// CountOpenOrders open orders status in  ('NEW', 'PARTIAL')
+func (o orderRepository) CountOpenOrders(ctx context.Context, db *sql.DB, marketName string) (int64, error) <span class="cov0" title="0">{
+        query := `
+                SELECT COUNT(id) 
+                FROM orders 
+                WHERE market = ? 
+                  AND status IN ('NEW', 'PARTIAL')
+        `
+
+        var count int64
+        err := db.QueryRowContext(ctx, query, marketName).Scan(&amp;count)
+        if err != nil </span><span class="cov0" title="0">{
+                return 0, fmt.Errorf("failed to count open orders for market %s: %w", marketName, err)
+        }</span>
+
+        <span class="cov0" title="0">return count, nil</span>
+}
 </pre>
 		
 		<pre class="file" id="file27" style="display: none">package repositoryImpl
@@ -4350,6 +4369,7 @@ import (
         "github.com/johnny1110/crypto-exchange/container"
         "github.com/johnny1110/crypto-exchange/controller"
         "github.com/johnny1110/crypto-exchange/middleware"
+        "github.com/prometheus/client_golang/prometheus/promhttp"
         "net/http"
 )
 
@@ -4391,6 +4411,11 @@ func setupRoutes(
                 ctx.JSON(http.StatusOK, gin.H{"status": "ok"})
         }</span>)
 
+        <span class="cov0" title="0">router.GET("/metrics", func(ctx *gin.Context) </span><span class="cov0" title="0">{
+                c.MetricsService.UpdateMetrics(ctx.Request.Context())
+                promhttp.Handler().ServeHTTP(ctx.Writer, ctx.Request)
+        }</span>)
+
         // Public router
         <span class="cov0" title="0">public := router.Group("/api/v1")
         </span><span class="cov0" title="0">{
@@ -4398,8 +4423,8 @@ func setupRoutes(
                 public.POST("/users/register", userController.Register)
                 public.POST("/users/login", userController.Login)
                 public.GET("/orderbooks/:market/snapshot", orderBookController.OrderbooksSnapshot)
-                public.GET("markets", marketDataController.GetAllMarketsData)
-                public.GET("markets/:market", marketDataController.GetMarketsData)
+                public.GET("/markets", marketDataController.GetAllMarketsData)
+                public.GET("/markets/:market", marketDataController.GetMarketsData)
         }</span>
 
         // Auth router
@@ -4437,6 +4462,7 @@ import (
         "github.com/johnny1110/crypto-exchange/service/impl/amm"
         "github.com/johnny1110/crypto-exchange/settings"
         "github.com/labstack/gommon/log"
+        "sync"
         "time"
 )
 
@@ -4444,7 +4470,27 @@ type LQDTScheduler struct {
         ammExgFuncProxy amm.IAmmExchangeFuncProxy
         duration        time.Duration
         ammUser         dto.User
+
+        runTimes int64
+        mu       sync.RWMutex //RW mutex
 }
+
+func (L *LQDTScheduler) Name() string <span class="cov0" title="0">{
+        return "AMM"
+}</span>
+
+func (L *LQDTScheduler) RunTimes() int64 <span class="cov0" title="0">{
+        L.mu.RLock()
+        defer L.mu.RUnlock()
+
+        return L.runTimes
+}</span>
+
+func (L *LQDTScheduler) countRunTime() <span class="cov0" title="0">{
+        L.mu.Lock()
+        defer L.mu.Unlock()
+        L.runTimes += 1
+}</span>
 
 func NewLQDTScheduler(ammExgFuncProxy amm.IAmmExchangeFuncProxy, service service.IUserService, duration time.Duration) Scheduler <span class="cov0" title="0">{
         ammAccount, err := service.GetUser(context.Background(), settings.INTERNAL_AMM_ACCOUNT_ID)
@@ -4459,12 +4505,6 @@ func NewLQDTScheduler(ammExgFuncProxy amm.IAmmExchangeFuncProxy, service service
         }</span>
 }
 
-var maxQuoteAmtPerLevelMap = map[string]float64{
-        "ETH-USDT": 4000,
-        "BTC-USDT": 10000,
-        "DOT-USDT": 888,
-}
-
 func (L LQDTScheduler) Start() error <span class="cov0" title="0">{
         ticker := time.NewTicker(L.duration)
         log.Info("[LQDTScheduler] start")
@@ -4474,8 +4514,9 @@ func (L LQDTScheduler) Start() error <span class="cov0" title="0">{
 
         go func() </span><span class="cov0" title="0">{
                 for range ticker.C </span><span class="cov0" title="0">{
+                        L.countRunTime()
                         for _, marketInfo := range settings.ALL_MARKETS </span><span class="cov0" title="0">{
-                                maxQuoteAmtPerLevel, ok := maxQuoteAmtPerLevelMap[marketInfo.Name]
+                                maxQuoteAmtPerLevel, ok := settings.MAX_QUOTE_AMT_PER_LEVEL_MAP[marketInfo.Name]
                                 if !ok </span><span class="cov0" title="0">{
                                         log.Warnf("[LQDTScheduler] no found maxQuoteAmtPerLevel param for market: %s, using default 1 USDT", marketInfo.Name)
                                         maxQuoteAmtPerLevel = 1
@@ -4501,6 +4542,7 @@ import (
         "github.com/johnny1110/crypto-exchange/service"
         "github.com/johnny1110/crypto-exchange/settings"
         "github.com/labstack/gommon/log"
+        "sync"
         "time"
 )
 
@@ -4511,6 +4553,9 @@ type MarketDataScheduler struct {
         stopCh       chan struct{}
         markets      []string
         duration     time.Duration
+
+        runTimes int64
+        mu       sync.RWMutex //RW mutex
 }
 
 func NewMarketDataScheduler(dataService service.IMarketDataService, cache service.ICacheService, duration time.Duration) Scheduler <span class="cov0" title="0">{
@@ -4525,11 +4570,33 @@ func NewMarketDataScheduler(dataService service.IMarketDataService, cache servic
                 cacheService: cache,
                 stopCh:       make(chan struct{}),
                 duration:     duration,
+
+                runTimes: 0,
         }</span>
 }
 
+func (s *MarketDataScheduler) Name() string <span class="cov0" title="0">{
+        return "MarketDataScheduler"
+}</span>
+
+func (s *MarketDataScheduler) RunTimes() int64 <span class="cov0" title="0">{
+        s.mu.RLock()
+        defer s.mu.RUnlock()
+        time := s.runTimes
+        log.Debugf("[MarketDataScheduler] return run times: %d", time)
+        return time
+}</span>
+
+func (s *MarketDataScheduler) countRunTime() <span class="cov0" title="0">{
+        s.mu.Lock()
+        defer s.mu.Unlock()
+
+        s.runTimes += 1
+        log.Debugf("[MarketDataScheduler] run time count: %d]", s.runTimes)
+}</span>
+
 func (s *MarketDataScheduler) Start() error <span class="cov0" title="0">{
-        log.Printf("[MarketDataScheduler] Starting scheduler for markets: %v", s.markets)
+        log.Debugf("[MarketDataScheduler] Starting scheduler for markets: %v", s.markets)
         ctx := context.Background()
         s.updateMarketData(ctx)
 
@@ -4558,7 +4625,8 @@ func (s *MarketDataScheduler) Stop() error <span class="cov0" title="0">{
 }
 
 func (s *MarketDataScheduler) updateMarketData(ctx context.Context) <span class="cov0" title="0">{
-        log.Info("[MarketDataScheduler] Updating market data...")
+        log.Debugf("[MarketDataScheduler] Updating market data...")
+        s.countRunTime()
 
         for _, market := range s.markets </span><span class="cov0" title="0">{
                 marketData, err := s.dataService.CalculateMarketData(ctx, market)
@@ -4568,7 +4636,7 @@ func (s *MarketDataScheduler) updateMarketData(ctx context.Context) <span class=
                 }
                 <span class="cov0" title="0">cacheKey := settings.MARKET_DATA_CACHE.Apply(market)
                 s.cacheService.Update(cacheKey, marketData)
-                log.Printf("Updated data for market: %s, price: %.4f, change: %.4f, volume: %.2f",
+                log.Debugf("Updated data for market: %s, price: %.4f, change: %.4f, volume: %.2f",
                         market, marketData.LatestPrice, marketData.PriceChange24H, marketData.TotalVolume24H)</span>
         }
 }
@@ -4579,12 +4647,16 @@ func (s *MarketDataScheduler) updateMarketData(ctx context.Context) <span class=
 import (
         "github.com/johnny1110/crypto-exchange/engine-v2/core"
         "github.com/labstack/gommon/log"
+        "sync"
         "time"
 )
 
 type orderBookSnapshotScheduler struct {
         engine   *core.MatchingEngine
         duration time.Duration
+
+        runTimes int64
+        mu       sync.RWMutex //RW mutex
 }
 
 func NewOrderBookSnapshotScheduler(engine *core.MatchingEngine, duration time.Duration) Scheduler <span class="cov0" title="0">{
@@ -4594,7 +4666,24 @@ func NewOrderBookSnapshotScheduler(engine *core.MatchingEngine, duration time.Du
         }
 }</span>
 
-func (o orderBookSnapshotScheduler) Start() error <span class="cov0" title="0">{
+func (o *orderBookSnapshotScheduler) Name() string <span class="cov0" title="0">{
+        return "orderBookSnapshot"
+}</span>
+
+func (o *orderBookSnapshotScheduler) RunTimes() int64 <span class="cov0" title="0">{
+        o.mu.RLock()
+        defer o.mu.RUnlock()
+
+        return o.runTimes
+}</span>
+
+func (o *orderBookSnapshotScheduler) countRunTime() <span class="cov0" title="0">{
+        o.mu.Lock()
+        defer o.mu.Unlock()
+        o.runTimes += 1
+}</span>
+
+func (o *orderBookSnapshotScheduler) Start() error <span class="cov0" title="0">{
         ticker := time.NewTicker(o.duration)
         log.Info("[OrderBookSnapshotScheduler] start")
 
@@ -4619,7 +4708,39 @@ func (o orderBookSnapshotScheduler) Stop() error <span class="cov0" title="0">{
 }</span>
 </pre>
 		
-		<pre class="file" id="file33" style="display: none">package security
+		<pre class="file" id="file33" style="display: none">package scheduler
+
+import "github.com/labstack/gommon/log"
+
+// SchedulerReporter report metrics data to metrics service
+type SchedulerReporter struct {
+        schedulers []Scheduler
+}
+
+func NewSchedulerReporter(schedulers []Scheduler) *SchedulerReporter <span class="cov0" title="0">{
+        return &amp;SchedulerReporter{
+                schedulers: schedulers,
+        }
+}</span>
+
+type SchedulerRunTimeReport struct {
+        JobName string
+        Times   int64
+}
+
+func (r *SchedulerReporter) Report() []SchedulerRunTimeReport <span class="cov0" title="0">{
+        reports := make([]SchedulerRunTimeReport, 0, len(r.schedulers))
+        for _, scheduler := range r.schedulers </span><span class="cov0" title="0">{
+                name := scheduler.Name()
+                runTimes := scheduler.RunTimes()
+                log.Infof("[Report] name:%s, runTimes:%d", name, runTimes)
+                reports = append(reports, SchedulerRunTimeReport{JobName: name, Times: runTimes})
+        }</span>
+        <span class="cov0" title="0">return reports</span>
+}
+</pre>
+		
+		<pre class="file" id="file34" style="display: none">package security
 
 import (
         "errors"
@@ -4654,7 +4775,7 @@ func (c *CredentialCache) Get(token string) (*dto.User, error) <span class="cov0
 }
 </pre>
 		
-		<pre class="file" id="file34" style="display: none">package serviceImpl
+		<pre class="file" id="file35" style="display: none">package serviceImpl
 
 import (
         "context"
@@ -4794,7 +4915,7 @@ func (as adminService) TestAutoMakeMarket(ctx context.Context) error <span class
 }</span>
 </pre>
 		
-		<pre class="file" id="file35" style="display: none">package amm
+		<pre class="file" id="file36" style="display: none">package amm
 
 import (
         "context"
@@ -4825,7 +4946,7 @@ func GetStrategy(s Strategy, proxy IAmmExchangeFuncProxy, ammUser dto.User) (Aut
 }
 </pre>
 		
-		<pre class="file" id="file36" style="display: none">package amm
+		<pre class="file" id="file37" style="display: none">package amm
 
 import (
         "context"
@@ -5049,7 +5170,7 @@ func (p *ProvideLiquidityStrategy) RoundVolume(volume float64) float64 <span cla
 }
 </pre>
 		
-		<pre class="file" id="file37" style="display: none">package amm
+		<pre class="file" id="file38" style="display: none">package amm
 
 import (
         "context"
@@ -5257,7 +5378,7 @@ func (a AmmExchangeFuncProxyImpl) CancelOrder(ctx context.Context, ammUID string
 }</span>
 </pre>
 		
-		<pre class="file" id="file38" style="display: none">package test
+		<pre class="file" id="file39" style="display: none">package test
 
 import (
         "github.com/johnny1110/crypto-exchange/dto"
@@ -5484,7 +5605,7 @@ func fake_orders(userId string, market string) []*dto.Order <span class="cov0" t
 }</span>
 </pre>
 		
-		<pre class="file" id="file39" style="display: none">package test
+		<pre class="file" id="file40" style="display: none">package test
 
 import (
         "context"
@@ -5538,7 +5659,7 @@ func mockAmmUser() dto.User <span class="cov10" title="2">{
 }</span>
 </pre>
 		
-		<pre class="file" id="file40" style="display: none">package serviceImpl
+		<pre class="file" id="file41" style="display: none">package serviceImpl
 
 import (
         "context"
@@ -5599,7 +5720,7 @@ func (bs *balanceService) GetBalances(ctx context.Context, userId string) ([]*dt
 }
 </pre>
 		
-		<pre class="file" id="file41" style="display: none">package serviceImpl
+		<pre class="file" id="file42" style="display: none">package serviceImpl
 
 import (
         "github.com/johnny1110/crypto-exchange/service"
@@ -5634,7 +5755,7 @@ func (c *CacheService) Get(key string) (interface{}, bool) <span class="cov0" ti
 }</span>
 </pre>
 		
-		<pre class="file" id="file42" style="display: none">package serviceImpl
+		<pre class="file" id="file43" style="display: none">package serviceImpl
 
 import (
         "context"
@@ -5723,7 +5844,124 @@ func (d *MarketDataService) getVolume24Hours(ctx context.Context, market string,
 }</span>
 </pre>
 		
-		<pre class="file" id="file43" style="display: none">package serviceImpl
+		<pre class="file" id="file44" style="display: none">package metrics
+
+import (
+        "context"
+        "github.com/johnny1110/crypto-exchange/scheduler"
+        "github.com/johnny1110/crypto-exchange/service"
+        "github.com/johnny1110/crypto-exchange/settings"
+        "github.com/labstack/gommon/log"
+        "github.com/prometheus/client_golang/prometheus"
+)
+
+// Prometheus metrics define
+var (
+        bidTotalVolume = prometheus.NewGaugeVec(
+                prometheus.GaugeOpts{
+                        Name: "exchange_bid_total_volume",
+                        Help: "Total volume of bid orders by market",
+                },
+                []string{"market"},
+        )
+
+        askTotalVolume = prometheus.NewGaugeVec(
+                prometheus.GaugeOpts{
+                        Name: "exchange_ask_total_volume",
+                        Help: "Total volume of ask orders by market",
+                },
+                []string{"market"},
+        )
+
+        latestDealtPrice = prometheus.NewGaugeVec(
+                prometheus.GaugeOpts{
+                        Name: "exchange_market_latest_price",
+                        Help: "latest dealt price by market",
+                },
+                []string{"market"},
+        )
+
+        openOrdersCount = prometheus.NewGaugeVec(
+                prometheus.GaugeOpts{
+                        Name: "exchange_open_orders_count",
+                        Help: "Number of open orders by market",
+                },
+                []string{"market"},
+        )
+
+        schedulerExecTimes = prometheus.NewGaugeVec(
+                prometheus.GaugeOpts{
+                        Name: "exchange_scheduler_exec_times",
+                        Help: "Number of scheduler execute times by job name",
+                },
+                []string{"jobName"},
+        )
+)
+
+func init() <span class="cov0" title="0">{
+        // register metrics
+        prometheus.MustRegister(bidTotalVolume)
+        prometheus.MustRegister(askTotalVolume)
+        prometheus.MustRegister(latestDealtPrice)
+        prometheus.MustRegister(openOrdersCount)
+        prometheus.MustRegister(schedulerExecTimes)
+}</span>
+
+type MetricService struct {
+        bookService       service.IOrderBookService
+        orderService      service.IOrderService
+        schedulerReporter *scheduler.SchedulerReporter
+}
+
+func NewMetricService(bookService service.IOrderBookService,
+        orderService service.IOrderService,
+        schedulerReporter *scheduler.SchedulerReporter) *MetricService <span class="cov0" title="0">{
+        return &amp;MetricService{
+                bookService:       bookService,
+                orderService:      orderService,
+                schedulerReporter: schedulerReporter,
+        }
+}</span>
+
+func (m *MetricService) UpdateMetrics(ctx context.Context) <span class="cov0" title="0">{
+        m.updateOrderBookMetrics(ctx)
+        m.updateOpenOrdersMetrics(ctx)
+        m.updateSchedulerExecTimesMetrics(ctx)
+}</span>
+
+func (m *MetricService) updateOrderBookMetrics(ctx context.Context) <span class="cov0" title="0">{
+        for _, market := range settings.ALL_MARKETS </span><span class="cov0" title="0">{
+                snapshot, err := m.bookService.GetSnapshot(ctx, market.Name)
+                if err != nil </span><span class="cov0" title="0">{
+                        log.Errorf("[Metrics] updateOrderBookMetrics error: %v", err)
+                        continue</span>
+                }
+                <span class="cov0" title="0">bidTotalVolume.WithLabelValues(market.Name).Set(snapshot.TotalBidSize)
+                askTotalVolume.WithLabelValues(market.Name).Set(snapshot.TotalAskSize)
+                latestDealtPrice.WithLabelValues(market.Name).Set(snapshot.LatestPrice)</span>
+        }
+}
+
+func (m *MetricService) updateOpenOrdersMetrics(ctx context.Context) <span class="cov0" title="0">{
+        for _, market := range settings.ALL_MARKETS </span><span class="cov0" title="0">{
+                count, err := m.orderService.CountOpenOrders(ctx, market.Name)
+                if err != nil </span><span class="cov0" title="0">{
+                        log.Errorf("[Metrics] updateOpenOrdersMetrics error: %v", err)
+                        continue</span>
+                }
+                <span class="cov0" title="0">openOrdersCount.WithLabelValues(market.Name).Set(float64(count))</span>
+        }
+}
+
+func (m *MetricService) updateSchedulerExecTimesMetrics(ctx context.Context) <span class="cov0" title="0">{
+        reports := m.schedulerReporter.Report()
+        for _, report := range reports </span><span class="cov0" title="0">{
+                schedulerExecTimes.WithLabelValues(report.JobName).Set(float64(report.Times))
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file45" style="display: none">package serviceImpl
 
 import (
         "context"
@@ -5768,7 +6006,7 @@ func (os orderBookService) GetBaseQuoteAssets(ctx context.Context, market string
 }
 </pre>
 		
-		<pre class="file" id="file44" style="display: none">package serviceImpl
+		<pre class="file" id="file46" style="display: none">package serviceImpl
 
 import (
         "context"
@@ -5782,6 +6020,7 @@ import (
         "github.com/johnny1110/crypto-exchange/service"
         "github.com/johnny1110/crypto-exchange/service/serviceHelper"
         "github.com/johnny1110/crypto-exchange/settings"
+        "github.com/johnny1110/crypto-exchange/utils"
         "github.com/labstack/gommon/log"
         "time"
 )
@@ -5791,6 +6030,7 @@ var (
         ErrOrderNotFound         = errors.New("order not found")
         ErrOrderNotBelongsToUser = errors.New("order not belongs to user")
         ErrInsufficientBalance   = errors.New("insufficient balance")
+        CanNotCancelClosedOrder  = errors.New("can not closed cancel order")
         UnknownError             = errors.New("unknown error")
 )
 
@@ -5943,7 +6183,7 @@ func (s *orderService) executeOrderPlacementPhase(ctx context.Context, orderCtx 
                 // 4. Update order status from engine result
                 <span class="cov0" title="0">orderCtx.SyncTradeResult(engineOrder, trades)
 
-                // 5. Save trade records
+                // 5. Save trade records (TODO: async to TradeService to make kines)
                 if len(orderCtx.Trades) &gt; 0 </span><span class="cov0" title="0">{
                         if err := s.tradeRepo.BatchInsert(ctx, tx, trades); err != nil </span><span class="cov0" title="0">{
                                 log.Errorf("[executeOrderPlacementPhase] BatchInsert Trades error : %v", err)
@@ -6028,9 +6268,14 @@ func (s *orderService) CancelOrder(ctx context.Context, userID, orderID string) 
                 return nil, ErrOrderNotBelongsToUser
         }</span>
 
+        <span class="cov0" title="0">if orderDto.Status != model.ORDER_STATUS_NEW &amp;&amp; orderDto.Status != model.ORDER_STATUS_PARTIAL </span><span class="cov0" title="0">{
+                return nil, CanNotCancelClosedOrder
+        }</span>
+
         <span class="cov0" title="0">engineOrder, err := s.engine.CancelOrder(orderDto.Market, orderID)
         if err != nil </span><span class="cov0" title="0">{
-                return nil, fmt.Errorf("failed to cancel order in engine: %w", err)
+                log.Errorf("[OrderService] CancelOrder failed: %v", err)
+                return nil, fmt.Errorf("failed to cancel order in engine")
         }</span>
 
         <span class="cov0" title="0">err = WithTx(ctx, s.db, func(tx *sql.Tx) error </span><span class="cov0" title="0">{
@@ -6164,30 +6409,47 @@ func validatePlacingOrderReq(user *dto.User, market string, req *dto.OrderReq) e
         }
 
         // Validate Ask orders
-        <span class="cov0" title="0">if req.Side == model.ASK &amp;&amp; req.Size &lt;= 0 </span><span class="cov0" title="0">{
+        <span class="cov0" title="0">if req.Side == model.ASK &amp;&amp; req.Size &lt;= utils.Scale </span><span class="cov0" title="0">{
+                log.Warnf("[OrderService] Validate PlacingOrder ASK Req failed, size:%v", req.Size)
                 return errors.New("ask order size must be greater than zero")
         }</span>
 
         // Validate Bid orders
         <span class="cov0" title="0">if req.Side == model.BID </span><span class="cov0" title="0">{
-                if req.OrderType == model.MARKET &amp;&amp; req.QuoteAmount &lt;= 0 </span><span class="cov0" title="0">{
-                        return errors.New("bid market order quote amount must be greater than zero")
+                if req.OrderType == model.MARKET &amp;&amp; req.QuoteAmount &lt;= utils.Scale </span><span class="cov0" title="0">{
+                        log.Warnf("[OrderService] Validate PlacingOrder MARKET BID Req failed, quote-amount:%v", req.QuoteAmount)
+                        return errors.New("bid market order quote amount invalid")
                 }</span>
-                <span class="cov0" title="0">if req.OrderType == model.LIMIT &amp;&amp; req.Size &lt;= 0 </span><span class="cov0" title="0">{
-                        return errors.New("bid limit order size must be greater than zero")
+                <span class="cov0" title="0">if req.OrderType == model.LIMIT &amp;&amp; req.Size &lt;= utils.Scale </span><span class="cov0" title="0">{
+                        log.Warnf("[OrderService] Validate PlacingOrder LIMIT BID Req failed, size:%v", req.Size)
+                        return errors.New("bid limit order size invalid")
                 }</span>
         }
 
         // Validate Limit orders
-        <span class="cov0" title="0">if req.OrderType == model.LIMIT &amp;&amp; req.Price &lt;= 0 </span><span class="cov0" title="0">{
-                return errors.New("limit order price must be greater than zero")
+        <span class="cov0" title="0">if req.OrderType == model.LIMIT &amp;&amp; req.Price &lt;= utils.Scale </span><span class="cov0" title="0">{
+                log.Warnf("[OrderService] Validate PlacingOrder LIMIT Req failed, price:%v", req.Price)
+                return errors.New("limit order price invalid")
         }</span>
 
         <span class="cov0" title="0">return nil</span>
 }
+
+func (s *orderService) CountOpenOrders(ctx context.Context, marketName string) (int64, error) <span class="cov0" title="0">{
+        if marketName == "" </span><span class="cov0" title="0">{
+                return 0, ErrInvalidInput
+        }</span>
+
+        <span class="cov0" title="0">counts, err := s.orderRepo.CountOpenOrders(ctx, s.db, marketName)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Errorf("[OrderService] CountOpenOrders failed, error %v", err)
+                return 0, err
+        }</span>
+        <span class="cov0" title="0">return counts, nil</span>
+}
 </pre>
 		
-		<pre class="file" id="file45" style="display: none">package serviceImpl
+		<pre class="file" id="file47" style="display: none">package serviceImpl
 
 import (
         "context"
@@ -6216,7 +6478,7 @@ func WithTx(ctx context.Context, db *sql.DB, fn func(tx *sql.Tx) error) (err err
 }
 </pre>
 		
-		<pre class="file" id="file46" style="display: none">package serviceImpl
+		<pre class="file" id="file48" style="display: none">package serviceImpl
 
 import (
         "context"
@@ -6288,7 +6550,7 @@ func (s userService) Register(ctx context.Context, req *dto.RegisterReq) (string
                 })
 
                 err = s.balanceRepo.BatchCreate(ctx, tx, userID, settings.GetAllAssets())
-
+                _ = s.balanceRepo.UpdateAsset(ctx, tx, userID, "USDT", 500, 0)
                 return err</span>
         })
 
@@ -6349,7 +6611,7 @@ func genUIDSecure() (string, error) <span class="cov0" title="0">{
 }
 </pre>
 		
-		<pre class="file" id="file47" style="display: none">package serviceHelper
+		<pre class="file" id="file49" style="display: none">package serviceHelper
 
 import (
         "fmt"
@@ -6357,6 +6619,7 @@ import (
         "github.com/johnny1110/crypto-exchange/engine-v2/book"
         "github.com/johnny1110/crypto-exchange/engine-v2/core"
         "github.com/johnny1110/crypto-exchange/engine-v2/model"
+        "github.com/johnny1110/crypto-exchange/utils"
 )
 
 // ParseMarket extracts base and quote assets.html from market
@@ -6400,7 +6663,7 @@ func DetermineFreezeValue(req *dto.OrderReq, baseAsset, quoteAsset string) (stri
 func calculateBidFreezeValue(req *dto.OrderReq, quoteAsset string) (string, float64) <span class="cov0" title="0">{
         switch req.OrderType </span>{
         case model.LIMIT:<span class="cov0" title="0">
-                return quoteAsset, req.Price * req.Size</span>
+                return quoteAsset, utils.RoundFloat(req.Price * req.Size)</span>
         case model.MARKET:<span class="cov0" title="0">
                 return quoteAsset, req.QuoteAmount</span>
         default:<span class="cov0" title="0">
@@ -6470,7 +6733,7 @@ func CalculateRefund(engine *core.MatchingEngine, market string, engineOrder *mo
 
         <span class="cov0" title="0">switch engineOrder.Side </span>{
         case model.BID:<span class="cov0" title="0">
-                return quoteAsset, engineOrder.Price * engineOrder.RemainingSize, nil</span>
+                return quoteAsset, utils.RoundFloat(engineOrder.Price * engineOrder.RemainingSize), nil</span>
         case model.ASK:<span class="cov0" title="0">
                 return baseAsset, engineOrder.RemainingSize, nil</span>
         default:<span class="cov0" title="0">
@@ -6524,13 +6787,14 @@ func DetermineFeeInfo(req *dto.OrderReq, user *dto.User, baseAsset string, quote
 }
 </pre>
 		
-		<pre class="file" id="file48" style="display: none">package serviceHelper
+		<pre class="file" id="file50" style="display: none">package serviceHelper
 
 import (
         "fmt"
         "github.com/johnny1110/crypto-exchange/dto"
         "github.com/johnny1110/crypto-exchange/engine-v2/book"
         "github.com/johnny1110/crypto-exchange/engine-v2/model"
+        "github.com/johnny1110/crypto-exchange/utils"
 )
 
 // OrderUpdateData represents data needed to update a dealt order
@@ -6645,10 +6909,13 @@ func (r *TradeSettlementResult) processBidUserBalances(bidSettlement *UserSettle
                 // For limit buy orders, unlock at order price and refund difference
                 unlockAmount := eatenOrder.Price * trade.Size
                 bidSettlement.QuoteAssetLocked -= unlockAmount
+                bidSettlement.QuoteAssetLocked = utils.RoundFloat(bidSettlement.QuoteAssetLocked)
                 bidSettlement.QuoteAssetAvailable += unlockAmount - tradeQuoteAmount // Refund overpayment
+                bidSettlement.QuoteAssetAvailable = utils.RoundFloat(bidSettlement.QuoteAssetAvailable)
         }</span> else<span class="cov0" title="0"> {
                 // For other orders, unlock exact trade amount
                 bidSettlement.QuoteAssetLocked -= tradeQuoteAmount
+                bidSettlement.QuoteAssetLocked = utils.RoundFloat(bidSettlement.QuoteAssetLocked)
         }</span>
 
         // Calculate fees and accumulate to sum.
@@ -6657,21 +6924,24 @@ func (r *TradeSettlementResult) processBidUserBalances(bidSettlement *UserSettle
 
         // Add base asset received (deduct fees)
         bidSettlement.BaseAssetAvailable += trade.Size - bidFees
+        bidSettlement.BaseAssetAvailable = utils.RoundFloat(bidSettlement.BaseAssetAvailable)
 
         return bidFees</span>
 }
 
 // processAskUserBalances handles ask user's balance updates and return ask fees (Quote Asset)
-func (r *TradeSettlementResult) processAskUserBalances(settlement *UserSettlementData, trade book.Trade, tradeQuoteAmount float64) (fees float64) <span class="cov0" title="0">{
+func (r *TradeSettlementResult) processAskUserBalances(askSettlement *UserSettlementData, trade book.Trade, tradeQuoteAmount float64) (fees float64) <span class="cov0" title="0">{
         // Remove locked base asset (what ask user sells)
-        settlement.BaseAssetLocked -= trade.Size
+        askSettlement.BaseAssetLocked -= trade.Size
+        askSettlement.BaseAssetLocked = utils.RoundFloat(askSettlement.BaseAssetLocked)
 
         // Calculate fees and accumulate to sum.
         askFees := tradeQuoteAmount * trade.AskFeeRate
         r.TotalQuoteFees += askFees
 
         // Add quote asset received
-        settlement.QuoteAssetAvailable += tradeQuoteAmount - askFees
+        askSettlement.QuoteAssetAvailable += tradeQuoteAmount - askFees
+        askSettlement.QuoteAssetAvailable = utils.RoundFloat(askSettlement.QuoteAssetAvailable)
 
         return askFees
 }</span>
@@ -6690,8 +6960,8 @@ func (r *TradeSettlementResult) addOppositeOrderUpdate(trade book.Trade, eatenOr
 
         <span class="cov0" title="0">r.OrderUpdates = append(r.OrderUpdates, &amp;OrderUpdateData{
                 OrderID:                    oppositeOrderId,
-                RemainingSizeDecreasing:    trade.Size,
-                DealtQuoteAmountIncreasing: tradeQuoteAmount,
+                RemainingSizeDecreasing:    utils.RoundFloat(trade.Size),
+                DealtQuoteAmountIncreasing: utils.RoundFloat(tradeQuoteAmount),
                 FeesIncreasing:             feeIncreasing,
         })</span>
 }
@@ -6719,8 +6989,8 @@ func (r *TradeSettlementResult) addEatenOrderUpdate(eatenOrder *dto.Order) <span
 
                 <span class="cov0" title="0">update = &amp;OrderUpdateData{
                         OrderID:                    eatenOrder.ID,
-                        RemainingSizeDecreasing:    r.TotalDealtSize,
-                        DealtQuoteAmountIncreasing: r.TotalDealtAmt,
+                        RemainingSizeDecreasing:    utils.RoundFloat(r.TotalDealtSize),
+                        DealtQuoteAmountIncreasing: utils.RoundFloat(r.TotalDealtAmt),
                         FeesIncreasing:             fees,
                 }</span>
         }
@@ -6730,7 +7000,7 @@ func (r *TradeSettlementResult) addEatenOrderUpdate(eatenOrder *dto.Order) <span
 }
 </pre>
 		
-		<pre class="file" id="file49" style="display: none">package settings
+		<pre class="file" id="file51" style="display: none">package settings
 
 import "fmt"
 
@@ -6747,25 +7017,48 @@ func (c CacheKeyPrefix) ApplyWithSuffix(key, suffix string) string <span class="
 const MARKET_DATA_CACHE = CacheKeyPrefix("MDC")
 </pre>
 		
-		<pre class="file" id="file50" style="display: none">package settings
+		<pre class="file" id="file52" style="display: none">package settings
 
 import "github.com/johnny1110/crypto-exchange/engine-v2/market"
 
+// All supported Tokens
 func GetAllAssets() []string <span class="cov0" title="0">{
-        return []string{"USDT", "BTC", "ETH", "DOT", "ASTR", "HDX"}
+        return []string{"USDT", "BTC", "ETH", "DOT", "ASTR", "HDX", "BTSE", "SOL", "LINK", "ADA", "BNB", "AVAX", "DOGE"}
 }</span>
 
+// All supported Markets
 var ALL_MARKETS = []*market.MarketInfo{
         {Name: "BTC-USDT", BaseAsset: "BTC", QuoteAsset: "USDT"},
         {Name: "ETH-USDT", BaseAsset: "ETH", QuoteAsset: "USDT"},
         {Name: "DOT-USDT", BaseAsset: "DOT", QuoteAsset: "USDT"},
+        {Name: "SOL-USDT", BaseAsset: "SOL", QuoteAsset: "USDT"},
+        {Name: "LINK-USDT", BaseAsset: "LINK", QuoteAsset: "USDT"},
+        {Name: "ADA-USDT", BaseAsset: "ADA", QuoteAsset: "USDT"},
+        {Name: "BNB-USDT", BaseAsset: "BNB", QuoteAsset: "USDT"},
+        {Name: "AVAX-USDT", BaseAsset: "AVAX", QuoteAsset: "USDT"},
+        {Name: "DOGE-USDT", BaseAsset: "DOGE", QuoteAsset: "USDT"},
+        {Name: "BTSE-USDT", BaseAsset: "BTSE", QuoteAsset: "USDT"},
+}
+
+// AMM Price Level settings
+var MAX_QUOTE_AMT_PER_LEVEL_MAP = map[string]float64{
+        "ETH-USDT":  4000,
+        "BTC-USDT":  20000,
+        "DOT-USDT":  1500,
+        "SOL-USDT":  3888,
+        "LINK-USDT": 1188,
+        "ADA-USDT":  1188,
+        "BNB-USDT":  1288,
+        "AVAX-USDT": 1388,
+        "DOGE-USDT": 1488,
+        "BTSE-USDT": 1588,
 }
 
 const MARGIN_ACCOUNT_ID = "0"
 const INTERNAL_AMM_ACCOUNT_ID = "MID250606CXAZ1199"
 </pre>
 		
-		<pre class="file" id="file51" style="display: none">package main
+		<pre class="file" id="file53" style="display: none">package main
 
 import (
         "context"
@@ -6910,7 +7203,6 @@ func startUpAllScheduler(c *container.Container) <span class="cov0" title="0">{
                 panic(err)</span>
         }
 
-        //TODO: bugged, no cancel order
         <span class="cov0" title="0">err = c.LQDTScheduler.Start()
         if err != nil </span><span class="cov0" title="0">{
                 panic(err)</span>
@@ -6920,6 +7212,25 @@ func startUpAllScheduler(c *container.Container) <span class="cov0" title="0">{
 func getEthClient() (*ethclient.Client, error) <span class="cov0" title="0">{
         return ethclient.Dial("http://localhost:8545")
 }</span>
+</pre>
+		
+		<pre class="file" id="file54" style="display: none">package utils
+
+import "math"
+
+const Scale = 1e-7
+
+func RoundFloat(f float64) float64 <span class="cov0" title="0">{
+        return math.Round(f*1e7) / 1e7
+}</span>
+
+func RoundFloats(fs []float64) []float64 <span class="cov0" title="0">{
+        result := make([]float64, len(fs))
+        for i, price := range fs </span><span class="cov0" title="0">{
+                result[i] = math.Round(price*1e7) / 1e7
+        }</span>
+        <span class="cov0" title="0">return result</span>
+}
 </pre>
 		
 		</div>

@@ -38,6 +38,7 @@ type IOrderService interface {
 	QueryOrdersByMarketAndStatuses(ctx context.Context, market string, statuses []model.OrderStatus) ([]*dto.Order, error)
 	PaginationQuery(ctx context.Context, query *dto.GetOrdersQueryReq) (*dto.PaginationResp[*dto.Order], error)
 	QueryOrderByMarket(ctx context.Context, userID string, market string, isOpenOrder bool) ([]*dto.Order, error)
+	CountOpenOrders(ctx context.Context, marketName string) (int64, error)
 }
 
 type IAdminService interface {

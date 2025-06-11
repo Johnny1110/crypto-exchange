@@ -36,7 +36,7 @@ CREATE TABLE orders
     avg_dealt_price REAL DEFAULT 0,
     type           INTEGER NOT NULL, -- 0=LIMIT,1=MARKET
     mode           INTEGER NOT NULL, -- 0=MAKER,1=TAKER
-    status         TEXT NOT NULL,    -- NEW, FILLED, CANCELED
+    status         TEXT NOT NULL,    -- NEW, FILLED, CANCELED, PARTIAL
     fee_rate       REAL DEFAULT 0,
     fees           REAL DEFAULT 0,
     fee_asset      TEXT,

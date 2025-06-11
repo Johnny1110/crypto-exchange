@@ -584,3 +584,21 @@ func (o orderRepository) PaginationQuery(ctx context.Context, db repository.DBEx
 
 	return response, nil
 }
+
+// CountOpenOrders open orders status in  ('NEW', 'PARTIAL')
+func (o orderRepository) CountOpenOrders(ctx context.Context, db *sql.DB, marketName string) (int64, error) {
+	query := `
+		SELECT COUNT(id) 
+		FROM orders 
+		WHERE market = ? 
+		  AND status IN ('NEW', 'PARTIAL')
+	`
+
+	var count int64
+	err := db.QueryRowContext(ctx, query, marketName).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count open orders for market %s: %w", marketName, err)
+	}
+
+	return count, nil
+}

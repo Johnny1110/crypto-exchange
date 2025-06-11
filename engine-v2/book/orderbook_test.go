@@ -3,6 +3,7 @@ package book
 import (
 	"fmt"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
+	"github.com/johnny1110/crypto-exchange/utils"
 	"sync"
 	"testing"
 	"time"
@@ -240,10 +241,13 @@ func TestOrderBook_MarketOrder(t *testing.T) {
 	trades, err := ob.PlaceOrder(model.MARKET, model.NewOrder("T2", "u", model.BID, 0, 0, 500.0, model.TAKER, 0))
 	assertNoError(t, err)
 	// Should generate exactly 2 trades
-	assert(t, 2, len(trades))
+	// #. #
+	fmt.Println("len(trades): ", len(trades))
+	fmt.Println("trades: ", trades)
+	assert(t, len(trades), 2)
 
 	fmt.Println("[trades-1]: ", trades[0])
 	fmt.Println("[trades-2]: ", trades[1])
 
-	assert(t, ob.TotalAskVolume(), 0.02970297029702973)
+	assert(t, utils.RoundFloat(ob.TotalAskVolume()), utils.RoundFloat(0.02970297029702973))
 }

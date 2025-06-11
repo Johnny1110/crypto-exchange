@@ -5,6 +5,7 @@ import (
 	"github.com/johnny1110/crypto-exchange/service"
 	"github.com/johnny1110/crypto-exchange/settings"
 	"github.com/labstack/gommon/log"
+	"sync"
 	"time"
 )
 
@@ -15,6 +16,9 @@ type MarketDataScheduler struct {
 	stopCh       chan struct{}
 	markets      []string
 	duration     time.Duration
+
+	runTimes int64
+	mu       sync.RWMutex //RW mutex
 }
 
 func NewMarketDataScheduler(dataService service.IMarketDataService, cache service.ICacheService, duration time.Duration) Scheduler {
@@ -29,11 +33,33 @@ func NewMarketDataScheduler(dataService service.IMarketDataService, cache servic
 		cacheService: cache,
 		stopCh:       make(chan struct{}),
 		duration:     duration,
+
+		runTimes: 0,
 	}
 }
 
+func (s *MarketDataScheduler) Name() string {
+	return "MarketDataScheduler"
+}
+
+func (s *MarketDataScheduler) RunTimes() int64 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	time := s.runTimes
+	log.Debugf("[MarketDataScheduler] return run times: %d", time)
+	return time
+}
+
+func (s *MarketDataScheduler) countRunTime() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.runTimes += 1
+	log.Debugf("[MarketDataScheduler] run time count: %d]", s.runTimes)
+}
+
 func (s *MarketDataScheduler) Start() error {
-	log.Printf("[MarketDataScheduler] Starting scheduler for markets: %v", s.markets)
+	log.Debugf("[MarketDataScheduler] Starting scheduler for markets: %v", s.markets)
 	ctx := context.Background()
 	s.updateMarketData(ctx)
 
@@ -62,7 +88,8 @@ func (s *MarketDataScheduler) Stop() error {
 }
 
 func (s *MarketDataScheduler) updateMarketData(ctx context.Context) {
-	log.Info("[MarketDataScheduler] Updating market data...")
+	log.Debugf("[MarketDataScheduler] Updating market data...")
+	s.countRunTime()
 
 	for _, market := range s.markets {
 		marketData, err := s.dataService.CalculateMarketData(ctx, market)
@@ -72,7 +99,7 @@ func (s *MarketDataScheduler) updateMarketData(ctx context.Context) {
 		}
 		cacheKey := settings.MARKET_DATA_CACHE.Apply(market)
 		s.cacheService.Update(cacheKey, marketData)
-		log.Printf("Updated data for market: %s, price: %.4f, change: %.4f, volume: %.2f",
+		log.Debugf("Updated data for market: %s, price: %.4f, change: %.4f, volume: %.2f",
 			market, marketData.LatestPrice, marketData.PriceChange24H, marketData.TotalVolume24H)
 	}
 }

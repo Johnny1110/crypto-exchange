@@ -6,6 +6,7 @@ import (
 	"github.com/johnny1110/crypto-exchange/engine-v2/market"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
 	"github.com/johnny1110/crypto-exchange/engine-v2/util"
+	"github.com/johnny1110/crypto-exchange/utils"
 	"github.com/labstack/gommon/log"
 	"sync"
 	"time"
@@ -410,7 +411,7 @@ func (ob *OrderBook) takeMarketBidOrder(order *model.Order) (trades []Trade, err
 	remainingQuoteAmt := order.QuoteAmount
 
 	// Consume all remainingQuoteAmt
-	for remainingQuoteAmt > 0 {
+	for remainingQuoteAmt > utils.Scale {
 		bestNode, err := opposite.PopBest()
 		if err != nil {
 			log.Errorf("[OrderBook] critical error in market bid order %s: %v", order.ID, err)

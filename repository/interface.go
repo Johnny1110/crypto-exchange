@@ -51,6 +51,7 @@ type IOrderRepository interface {
 	GetOrdersByMarketAndStatuses(ctx context.Context, db DBExecutor, market string, statuses []model.OrderStatus) ([]*dto.Order, error)
 	PaginationQuery(ctx context.Context, db DBExecutor, query *dto.GetOrdersQueryReq, statuses []model.OrderStatus, endTime time.Time) (*dto.PaginationResp[*dto.Order], error)
 	GetOrdersByUserIdAndMarketAndStatuses(ctx context.Context, b DBExecutor, userId string, market string, statuses []model.OrderStatus) ([]*dto.Order, error)
+	CountOpenOrders(ctx context.Context, db *sql.DB, marketName string) (int64, error)
 }
 
 type ITradeRepository interface {

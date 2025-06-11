@@ -426,3 +426,16 @@ func validatePlacingOrderReq(user *dto.User, market string, req *dto.OrderReq) e
 
 	return nil
 }
+
+func (s *orderService) CountOpenOrders(ctx context.Context, marketName string) (int64, error) {
+	if marketName == "" {
+		return 0, ErrInvalidInput
+	}
+
+	counts, err := s.orderRepo.CountOpenOrders(ctx, s.db, marketName)
+	if err != nil {
+		log.Errorf("[OrderService] CountOpenOrders failed, error %v", err)
+		return 0, err
+	}
+	return counts, nil
+}

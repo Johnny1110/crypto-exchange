@@ -5,6 +5,7 @@ import (
 	"github.com/johnny1110/crypto-exchange/container"
 	"github.com/johnny1110/crypto-exchange/controller"
 	"github.com/johnny1110/crypto-exchange/middleware"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http"
 )
 
@@ -46,6 +47,11 @@ func setupRoutes(
 		ctx.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
+	router.GET("/metrics", func(ctx *gin.Context) {
+		c.MetricsService.UpdateMetrics(ctx.Request.Context())
+		promhttp.Handler().ServeHTTP(ctx.Writer, ctx.Request)
+	})
+
 	// Public router
 	public := router.Group("/api/v1")
 	{
@@ -53,8 +59,8 @@ func setupRoutes(
 		public.POST("/users/register", userController.Register)
 		public.POST("/users/login", userController.Login)
 		public.GET("/orderbooks/:market/snapshot", orderBookController.OrderbooksSnapshot)
-		public.GET("markets", marketDataController.GetAllMarketsData)
-		public.GET("markets/:market", marketDataController.GetMarketsData)
+		public.GET("/markets", marketDataController.GetAllMarketsData)
+		public.GET("/markets/:market", marketDataController.GetMarketsData)
 	}
 
 	// Auth router
