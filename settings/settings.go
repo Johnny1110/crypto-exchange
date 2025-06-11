@@ -19,6 +19,8 @@ var ALL_MARKETS = []*market.MarketInfo{
 	{Name: "AVAX-USDT", BaseAsset: "AVAX", QuoteAsset: "USDT"},
 	{Name: "DOGE-USDT", BaseAsset: "DOGE", QuoteAsset: "USDT"},
 	{Name: "BTSE-USDT", BaseAsset: "BTSE", QuoteAsset: "USDT"},
+	{Name: "ASTR-USDT", BaseAsset: "ASTR", QuoteAsset: "USDT"},
+	{Name: "HDX-USDT", BaseAsset: "HDX", QuoteAsset: "USDT"},
 }
 
 // AMM Price Level settings
@@ -33,6 +35,8 @@ var MAX_QUOTE_AMT_PER_LEVEL_MAP = map[string]float64{
 	"AVAX-USDT": 1388,
 	"DOGE-USDT": 1488,
 	"BTSE-USDT": 1588,
+	"ASTR-USDT": 100,
+	"HDX-USDT":  100,
 }
 
 const MARGIN_ACCOUNT_ID = "0"

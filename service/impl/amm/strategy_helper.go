@@ -182,8 +182,12 @@ func (a *AmmExchangeFuncProxyImpl) GetIndexPrice(ctx context.Context, symbol str
 	}
 
 	log.Warnf("[GetIndexPrcie] not found by BTSE API, using Default")
-
-	return a.orderBookService.GetLatestPrice(ctx, symbol)
+	idxPrice, _ := a.orderBookService.GetLatestPrice(ctx, symbol)
+	if idxPrice > 0 {
+		return idxPrice, nil
+	} else {
+		return 0.01, nil
+	}
 }
 
 func (a AmmExchangeFuncProxyImpl) GetOrderBookSnapshot(ctx context.Context, marketName string) (book.BookSnapshot, error) {
