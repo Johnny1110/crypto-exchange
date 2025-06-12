@@ -104,3 +104,6 @@ cpu: VirtualApple @ 2.50GHz
 BenchmarkCancelOrder
 BenchmarkCancelOrder-8   	 5864726/s	       259.0 ns/op
 ```
+
+
+📄 License: MIT (Non-commercial use only). For commercial use, please contact: Jarvan1110@gmail.com
