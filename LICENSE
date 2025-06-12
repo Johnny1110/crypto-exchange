@@ -1,23 +1,38 @@
-MIT License
+Open Source Project License (Non-Commercial Use Only)
+Copyright © [2025] [Johnny Wang]
+Email: Jarvan1110@gmail.com
 
-Copyright (c) 2025 Johnny Wang
+1. License Grant
+This software (the "Software") is provided under the following terms and conditions. You are hereby granted permission to use, copy, modify, and distribute the Software and derivative works for non-commercial purposes only, without fee or additional authorization.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, subject to the following conditions:
+2. Definition of Non-Commercial Use
+"Non-Commercial Use" includes, but is not limited to:
 
-1. The above copyright notice and this permission notice shall be included
-   in all copies or substantial portions of the Software.
+Personal learning, research, and experimentation.
 
-2. This Software is for non-commercial use only. 
-   For commercial use, please contact: Jarvan1110@gmail.com
+Academic research and educational use.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+Open-source community projects (as long as the project is not directly or indirectly commercialized).
+
+Non-Commercial Use does NOT include:
+
+Any use in commercial products or services, whether or not they are sold for profit.
+
+Internal use by for-profit organizations or corporations.
+
+Software-as-a-Service (SaaS), applications, websites, or any service that generates revenue.
+
+3. Commercial Use
+For any commercial use of this Software—including but not limited to any use outside the scope of "Non-Commercial Use" as defined above—prior written permission from the author is required.
+Please contact: Jarvan1110@gmail.com for licensing inquiries.
+
+4. Disclaimer of Warranty
+The Software is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and non-infringement.
+In no event shall the author be liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the Software or the use or other dealings in the Software.
+
+5. Miscellaneous
+By using the Software, you agree to be bound by the terms of this license.
+
+The author reserves the right to modify this license at any time without prior notice.
+
+If you do not agree to these terms, you must not use the Software.
