@@ -112,4 +112,6 @@ BenchmarkCancelOrder-8   	 5864726/s	       259.0 ns/op
 
 <br>
 
-📄 License: MIT (Non-commercial use only). For commercial use, please contact: Jarvan1110@gmail.com
+📄 License: [link](LICENSE)
+
+* Non-commercial use only. For commercial use, please contact: Jarvan1110@gmail.com
