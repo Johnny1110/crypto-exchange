@@ -12,9 +12,10 @@ type TradeStream interface {
 
 // ==================== Repository ====================
 type OHLCVRepository interface {
-	SaveOHLCVBar(ctx context.Context, bar *ohlcvBar, interval string) error
+	SaveOHLCVBar(ctx context.Context, bar *OHLCVBar, interval string) error
 	GetOHLCVData(ctx context.Context, req *GetOhlcvDataReq) (*OHLCV, error)
-	UpdateRealtimeOHLCV(ctx context.Context, bar *ohlcvBar, interval string) error
-	GetRealtimeOHLCV(ctx context.Context, symbol, interval string, openTime int64) (*ohlcvBar, error)
+	UpdateRealtimeOHLCV(ctx context.Context, bar *OHLCVBar, interval string) error
+	GetRealtimeOHLCV(ctx context.Context, symbol, interval string, openTime int64) (*OHLCVBar, error)
 	UpdateStatistics(ctx context.Context, symbol, interval string, date time.Time, stats *ohlcvStatistics) error
+	SaveOHLCVBars(ctx context.Context, ohlcvBars []*OHLCVBar, interval string) error
 }

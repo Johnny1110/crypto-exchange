@@ -25,7 +25,12 @@ func NewSQLiteOHLCVRepository(dbPath string) (OHLCVRepository, error) {
 	return &SQLiteOHLCVRepository{db: db}, nil
 }
 
-func (r *SQLiteOHLCVRepository) SaveOHLCVBar(ctx context.Context, bar *ohlcvBar, interval string) error {
+func (r *SQLiteOHLCVRepository) SaveOHLCVBars(ctx context.Context, ohlcvBars []*OHLCVBar, interval string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r *SQLiteOHLCVRepository) SaveOHLCVBar(ctx context.Context, bar *OHLCVBar, interval string) error {
 	config, exists := SupportedIntervals[interval]
 	if !exists {
 		return fmt.Errorf("unsupported interval: %s", interval)
@@ -129,7 +134,7 @@ func (r *SQLiteOHLCVRepository) reverseOHLCVArrays(ohlcv *OHLCV) {
 	}
 }
 
-func (r *SQLiteOHLCVRepository) UpdateRealtimeOHLCV(ctx context.Context, bar *ohlcvBar, interval string) error {
+func (r *SQLiteOHLCVRepository) UpdateRealtimeOHLCV(ctx context.Context, bar *OHLCVBar, interval string) error {
 	query := `
 		INSERT OR REPLACE INTO ohlcv_realtime (
 			symbol, interval_type, open_price, high_price, low_price, close_price,
@@ -146,7 +151,7 @@ func (r *SQLiteOHLCVRepository) UpdateRealtimeOHLCV(ctx context.Context, bar *oh
 	return err
 }
 
-func (r *SQLiteOHLCVRepository) GetRealtimeOHLCV(ctx context.Context, symbol, interval string, openTime int64) (*ohlcvBar, error) {
+func (r *SQLiteOHLCVRepository) GetRealtimeOHLCV(ctx context.Context, symbol, interval string, openTime int64) (*OHLCVBar, error) {
 	query := `
 		SELECT symbol, open_price, high_price, low_price, close_price, volume, quote_volume,
 			   open_time, close_time, trade_count
@@ -156,7 +161,7 @@ func (r *SQLiteOHLCVRepository) GetRealtimeOHLCV(ctx context.Context, symbol, in
 
 	row := r.db.QueryRowContext(ctx, query, symbol, interval, openTime)
 
-	bar := &ohlcvBar{}
+	bar := &OHLCVBar{}
 	err := row.Scan(
 		&bar.Symbol, &bar.OpenPrice, &bar.HighPrice, &bar.LowPrice, &bar.ClosePrice,
 		&bar.Volume, &bar.QuoteVolume, &bar.OpenTime, &bar.CloseTime, &bar.TradeCount,

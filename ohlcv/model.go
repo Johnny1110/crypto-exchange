@@ -28,7 +28,7 @@ type OHLCV struct {
 }
 
 // Internal OHLCV bar structure
-type ohlcvBar struct {
+type OHLCVBar struct {
 	Symbol      string
 	OpenPrice   float64
 	HighPrice   float64
