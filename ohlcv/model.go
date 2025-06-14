@@ -2,6 +2,18 @@ package ohlcv
 
 import "time"
 
+type OHLCV_INTERVAL string
+
+const MIN_1 = OHLCV_INTERVAL("1m")
+const MIN_15 = OHLCV_INTERVAL("15m")
+const MIN_30 = OHLCV_INTERVAL("30m")
+const H_1 = OHLCV_INTERVAL("1h")
+const H_4 = OHLCV_INTERVAL("4h")
+const D_1 = OHLCV_INTERVAL("1d")
+const W_1 = OHLCV_INTERVAL("1w")
+const M_1 = OHLCV_INTERVAL("1m")
+const Y_1 = OHLCV_INTERVAL("1y")
+
 type Trade struct {
 	Symbol    string
 	Price     float64 // price limit
@@ -30,6 +42,7 @@ type OHLCV struct {
 // Internal OHLCV bar structure
 type OHLCVBar struct {
 	Symbol      string
+	Duration    time.Duration
 	OpenPrice   float64
 	HighPrice   float64
 	LowPrice    float64
@@ -40,6 +53,23 @@ type OHLCVBar struct {
 	CloseTime   int64
 	TradeCount  int64
 	IsClosed    bool
+}
+
+func NewOhlcvBar(symbol string, openPrice float64, openTime int64, duration time.Duration) *OHLCVBar {
+	return &OHLCVBar{
+		Symbol:      symbol,
+		Duration:    duration,
+		OpenPrice:   openPrice,
+		HighPrice:   openPrice,
+		LowPrice:    openPrice,
+		ClosePrice:  openPrice,
+		Volume:      0.0,
+		QuoteVolume: 0.0,
+		OpenTime:    openTime,
+		CloseTime:   openTime + int64(duration.Seconds()),
+		TradeCount:  0,
+		IsClosed:    false,
+	}
 }
 
 type ohlcvStatistics struct {
