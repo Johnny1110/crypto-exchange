@@ -4,7 +4,6 @@ import "time"
 
 type OHLCV_INTERVAL string
 
-const MIN_1 = OHLCV_INTERVAL("1m")
 const MIN_15 = OHLCV_INTERVAL("15m")
 const MIN_30 = OHLCV_INTERVAL("30m")
 const H_1 = OHLCV_INTERVAL("1h")
@@ -66,9 +65,28 @@ func NewOhlcvBar(symbol string, openPrice float64, openTime int64, duration time
 		Volume:      0.0,
 		QuoteVolume: 0.0,
 		OpenTime:    openTime,
-		CloseTime:   openTime + int64(duration.Seconds()),
+		CloseTime:   openTime + int64(duration/time.Second) - 1,
 		TradeCount:  0,
 		IsClosed:    false,
+	}
+}
+
+func (b *OHLCVBar) Update(trade *Trade) {
+	// Update high (h)
+	b.HighPrice = max(b.HighPrice, trade.Price)
+	// update low (l)
+	b.LowPrice = min(b.LowPrice, trade.Price)
+	// update close (c)
+	b.ClosePrice = trade.Price
+	// Update volume (v)
+	b.Volume += trade.Volume
+	b.QuoteVolume += trade.Volume * trade.Price
+	b.TradeCount++
+}
+
+func (b *OHLCVBar) BatchUpdate(list []*Trade) {
+	for _, trade := range list {
+		b.Update(trade)
 	}
 }
 
