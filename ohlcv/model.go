@@ -1,6 +1,9 @@
 package ohlcv
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type OHLCV_INTERVAL string
 
@@ -71,7 +74,16 @@ func NewOhlcvBar(symbol string, openPrice float64, openTime int64, duration time
 	}
 }
 
-func (b *OHLCVBar) Update(trade *Trade) {
+func (b *OHLCVBar) Update(trade *Trade) error {
+	if trade == nil {
+		return fmt.Errorf("trade cannot be nil")
+	}
+	if trade.Price <= 0 {
+		return fmt.Errorf("invalid price: %f", trade.Price)
+	}
+	if trade.Volume <= 0 {
+		return fmt.Errorf("invalid volume: %f", trade.Volume)
+	}
 	// Update high (h)
 	b.HighPrice = max(b.HighPrice, trade.Price)
 	// update low (l)
@@ -82,11 +94,15 @@ func (b *OHLCVBar) Update(trade *Trade) {
 	b.Volume += trade.Volume
 	b.QuoteVolume += trade.Volume * trade.Price
 	b.TradeCount++
+
+	return nil
 }
 
 func (b *OHLCVBar) BatchUpdate(list []*Trade) {
 	for _, trade := range list {
-		b.Update(trade)
+		if err := b.Update(trade); err != nil {
+			fmt.Errorf("[OHLCVBar] BatchUpdate trade error: %s", err.Error())
+		}
 	}
 }
 

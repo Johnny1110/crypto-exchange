@@ -111,6 +111,7 @@ func (a *OHLCVAggregator) Start(ctx context.Context, symbols []string) error {
 
 func (a *OHLCVAggregator) Stop() error {
 	close(a.stopCh)
+	//TODO a.workerPool.Stop()
 	return a.tradeStream.Close()
 }
 
