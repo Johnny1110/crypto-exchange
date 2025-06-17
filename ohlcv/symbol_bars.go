@@ -3,6 +3,7 @@ package ohlcv
 import (
 	"context"
 	"fmt"
+	"github.com/labstack/gommon/log"
 	"sync"
 	"time"
 )
@@ -88,6 +89,8 @@ func (s *RealtimeSymbolBars) GetAllIntervals() []OHLCV_INTERVAL {
 }
 
 func (s *RealtimeSymbolBars) UpdateByTrades(ctx context.Context, trades []*Trade) {
+	log.Debugf("[RealtimeSymbolBars] UpdateByTrades, trades: %v", trades)
+
 	if len(trades) == 0 {
 		return
 	}
@@ -124,7 +127,7 @@ func (s *RealtimeSymbolBars) UpdateByTrades(ctx context.Context, trades []*Trade
 			newBar.BatchUpdate(tradeList)
 		}
 	}
-	
+
 	s.mu.Unlock()
 }
 

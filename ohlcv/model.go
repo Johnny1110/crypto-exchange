@@ -74,6 +74,27 @@ func NewOhlcvBar(symbol string, openPrice float64, openTime int64, duration time
 	}
 }
 
+func (o OHLCVBar) String() string {
+	openTime := time.Unix(o.OpenTime, 0)
+	closeTime := time.Unix(o.CloseTime, 0)
+
+	return fmt.Sprintf(
+		"OHLCVBar{Symbol: %s, Duration: %v, O: %.4f, H: %.4f, L: %.4f, C: %.4f, V: %.2f, QV: %.2f, OpenTime: %s, CloseTime: %s, Trades: %d, Closed: %t}",
+		o.Symbol,
+		o.Duration,
+		o.OpenPrice,
+		o.HighPrice,
+		o.LowPrice,
+		o.ClosePrice,
+		o.Volume,
+		o.QuoteVolume,
+		openTime.Format("2006-01-02 15:04:05"),
+		closeTime.Format("2006-01-02 15:04:05"),
+		o.TradeCount,
+		o.IsClosed,
+	)
+}
+
 func (b *OHLCVBar) Update(trade *Trade) error {
 	if trade == nil {
 		return fmt.Errorf("trade cannot be nil")

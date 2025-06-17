@@ -26,10 +26,6 @@ type OHLCVAggregator struct {
 
 	// State management
 	isRunning int32
-
-	// Timers
-	intervalTimers map[string]*time.Timer
-	timerMutex     sync.RWMutex
 }
 
 func NewOHLCVAggregator(repo OHLCVRepository, stream TradeStream, config *AggregatorConfig) (*OHLCVAggregator, error) {
@@ -49,15 +45,17 @@ func NewOHLCVAggregator(repo OHLCVRepository, stream TradeStream, config *Aggreg
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
+	wp := NewWorkerPool(config.MaxConcurrency)
+	wp.Start(context.Background())
+
 	return &OHLCVAggregator{
 		repo:               repo,
 		tradeStream:        stream,
 		realtimeSymbolBars: sync.Map{},
-		workerPool:         NewWorkerPool(config.MaxConcurrency),
+		workerPool:         wp,
 		config:             config,
 		tradeCh:            make(chan *Trade, config.ChannelSize),
 		stopCh:             make(chan struct{}),
-		intervalTimers:     make(map[string]*time.Timer),
 		isRunning:          0,
 	}, nil
 }
@@ -105,6 +103,7 @@ func (a *OHLCVAggregator) Start(ctx context.Context, symbols []string) error {
 	// Start periodic flush
 	go a.periodicFlush(ctx)
 
+	a.isRunning = 1
 	log.Infof("[OHLCVAggregator] OHLCV aggregator started successfully")
 	return nil
 }
@@ -139,18 +138,21 @@ func (a *OHLCVAggregator) processTradeStream(ctx context.Context, ch <-chan *Tra
 func (a *OHLCVAggregator) aggregateTrades(ctx context.Context) {
 	// create trade data batch container
 	tradeBatch := make([]*Trade, 0, a.config.BatchSize)
+	log.Infof("[OHLCVAggregator] flash batch trades interval: %v", a.config.FlushInterval)
 	ticker := time.NewTicker(a.config.FlushInterval)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case trade := <-a.tradeCh:
+			log.Debugf("[OHLCVAggregator] recieved trade %v, put into tradeBatch.", trade)
 			tradeBatch = append(tradeBatch, trade)
 			if len(tradeBatch) >= a.config.BatchSize {
 				a.processTradeBatch(ctx, tradeBatch)
 				tradeBatch = tradeBatch[:0]
 			}
 		case <-ticker.C:
+			log.Debugf("[OHLCVAggregator] try to flush trade batch, data count: %v", len(tradeBatch))
 			if len(tradeBatch) > 0 {
 				a.processTradeBatch(ctx, tradeBatch)
 				tradeBatch = tradeBatch[:0]
@@ -261,4 +263,33 @@ func (a *OHLCVAggregator) flushRealtimeBars(ctx context.Context) {
 
 		return true
 	})
+}
+
+// ======================================== Public Query Methods ========================================
+
+func (a *OHLCVAggregator) GetOHLCVData(ctx context.Context, req *GetOhlcvDataReq) (*OHLCV, error) {
+	// Validate request
+	if req.Limit <= 0 {
+		req.Limit = 500
+	}
+	if req.Limit > 1000 {
+		req.Limit = 1000
+	}
+
+	// Delegate to repository
+	return a.repo.GetOHLCVData(ctx, req)
+}
+
+func (a *OHLCVAggregator) GetRealtimeOHLCV(ctx context.Context, symbol string, interval OHLCV_INTERVAL) (OHLCVBar, error) {
+	// First check memory cache
+	if ohlcvBar, ok := a.realtimeSymbolBars.Load(symbol); ok {
+		rtsBars := ohlcvBar.(*RealtimeSymbolBars)
+		if bar, ok := rtsBars.GetIntervalBar(interval); ok {
+			return bar, nil
+		} else {
+			return OHLCVBar{}, fmt.Errorf("failed to get realtime OHLCV bar for symbol: %v, interval: %v", symbol, interval)
+		}
+	} else {
+		return OHLCVBar{}, fmt.Errorf("realtime OHLCV bar not found for symbol: %v", symbol)
+	}
 }
