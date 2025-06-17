@@ -111,7 +111,7 @@ func (a *OHLCVAggregator) Start(ctx context.Context, symbols []string) error {
 
 func (a *OHLCVAggregator) Stop() error {
 	close(a.stopCh)
-	//TODO a.workerPool.Stop()
+	a.workerPool.Stop()
 	return a.tradeStream.Close()
 }
 
@@ -175,19 +175,14 @@ func (a *OHLCVAggregator) processTradeBatch(ctx context.Context, trades []*Trade
 	}
 
 	// Each symbol's trades can be processed concurrently
-	// TODO: using workerGroup
-	var wg sync.WaitGroup
 	for symbol, ts := range symbolTrades {
-		wg.Add(1)
-		go func(sym string, ts []*Trade) {
-			defer wg.Done()
-			if value, ok := a.realtimeSymbolBars.Load(sym); ok {
-				symbolBars := value.(*RealtimeSymbolBars)
+		if value, ok := a.realtimeSymbolBars.Load(symbol); ok {
+			symbolBars := value.(*RealtimeSymbolBars)
+			a.workerPool.Submit(func() {
 				symbolBars.UpdateByTrades(ctx, ts)
-			}
-		}(symbol, ts)
+			})
+		}
 	}
-	wg.Wait()
 }
 
 // ==================== Interval Timer Management ====================
