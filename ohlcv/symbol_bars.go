@@ -44,7 +44,7 @@ func (s *RealtimeSymbolBars) CloseBars(interval OHLCV_INTERVAL, targetOpenTime i
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	closeResults := make([]OHLCVBar, 0, 5)
+	closeResults := make([]OHLCVBar, 0)
 
 	if closingBars, ok := s.intervalBars[interval]; ok {
 		var latestClosingBar *OHLCVBar

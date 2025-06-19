@@ -13,9 +13,10 @@ type IntervalConfig struct {
 }
 
 var SupportedIntervals = map[OHLCV_INTERVAL]IntervalConfig{
-	H_1: {Duration: time.Hour, Table: "ohlcv_1h"},
-	D_1: {Duration: 24 * time.Hour, Table: "ohlcv_1d"},
-	W_1: {Duration: 7 * 24 * time.Hour, Table: "ohlcv_1w"},
+	MIN_15: {Duration: 15 * time.Minute, Table: "ohlcv_15min"},
+	H_1:    {Duration: time.Hour, Table: "ohlcv_1h"},
+	D_1:    {Duration: 24 * time.Hour, Table: "ohlcv_1d"},
+	W_1:    {Duration: 7 * 24 * time.Hour, Table: "ohlcv_1w"},
 }
 
 const (

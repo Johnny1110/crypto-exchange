@@ -205,24 +205,48 @@ func (a *OHLCVAggregator) startIntervalTimer(ctx context.Context, interval OHLCV
 	for {
 		select {
 		case now := <-ticker.C:
-			// calculate currentBucket timestamp
-			currentBucketTimestamp := getBucketUnixTime(now, config.Duration)
-			nextBucketTime := getNextBucketTime(now, config.Duration)
-			if now.After(nextBucketTime) || now.Equal(nextBucketTime) {
-				// close expired bucket.
-				if currentBucketTimestamp > lastClosedTimestamp {
-					a.closeIntervalBars(ctx, interval, currentBucketTimestamp)
-					lastClosedTimestamp = currentBucketTimestamp
-				}
+			// check if there has bucket to close.
+			bucketToClose := a.findBucketToClose(now, config.Duration, lastClosedTimestamp)
+
+			if bucketToClose > 0 && bucketToClose > lastClosedTimestamp {
+				log.Infof("[OHLCVAggregator] Closing interval bar for timestamp %d (%s)",
+					bucketToClose,
+					time.Unix(bucketToClose, 0).Format("2006-01-02 15:04:05"))
+
+				a.closeIntervalBars(ctx, interval, bucketToClose)
+				lastClosedTimestamp = bucketToClose
 			}
+
+		case <-ctx.Done():
+			return
+		case <-a.stopCh:
+			return
 		}
 	}
 }
 
+func (a *OHLCVAggregator) findBucketToClose(now time.Time, interval time.Duration, lastClosedTimestamp int64) int64 {
+	currentBucket := getBucketTime(now, interval)
+
+	// 檢查前一個桶是否應該關閉
+	previousBucket := currentBucket.Add(-interval)
+	previousBucketEnd := previousBucket.Add(interval - 1*time.Second)
+
+	// 如果當前時間已經超過了前一個桶的結束時間，則應該關閉前一個桶
+	if (now.After(previousBucketEnd) || now.Equal(previousBucketEnd)) &&
+		previousBucket.Unix() > lastClosedTimestamp {
+		return previousBucket.Unix()
+	}
+
+	return 0 // 沒有需要關閉的桶
+}
+
 func (a *OHLCVAggregator) closeIntervalBars(ctx context.Context, interval OHLCV_INTERVAL, openTime int64) {
 	a.realtimeSymbolBars.Range(func(key, value interface{}) bool {
+		symbol := key.(string)
 		rsBars := value.(*RealtimeSymbolBars)
 		closedBars, err := rsBars.CloseBars(interval, openTime)
+		log.Infof("[OHLCVAggregator] attampt to close OHLCV bar, symbol:%s, interval:%v count:%v", symbol, interval, len(closedBars))
 		if err = a.repo.UpsertOHLCVBars(ctx, closedBars, interval); err != nil {
 			log.Errorf("[OHLCVAggregator] Failed to save OHLCVBars: %v", err)
 		}

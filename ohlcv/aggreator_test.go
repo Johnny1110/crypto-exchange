@@ -176,13 +176,33 @@ func Test_Startup(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		time.Sleep(5 * time.Minute)
 
-		ohlcv, err := agg.GetRealtimeOHLCV(ctx, "ETH-USDT", H_1)
+		ohlcv, err := agg.GetRealtimeOHLCV(ctx, "ETH-USDT", MIN_15)
+		if err != nil {
+			t.Error(err)
+		}
+		fmt.Println("*** refresh realtime bar (15min): ", ohlcv)
+
+		bars, err := agg.GetOHLCVData(ctx, &GetOhlcvDataReq{
+			Symbol:    "ETH-USDT",
+			Interval:  MIN_15,
+			StartTime: testing_start_time,
+			EndTime:   time.Now(),
+		})
+
+		if err != nil {
+			t.Error(err)
+		}
+		fmt.Println("### refresh closed bar (15min)", bars)
+
+		// ------------------------------------------------------------------------------------------------
+
+		ohlcv, err = agg.GetRealtimeOHLCV(ctx, "ETH-USDT", H_1)
 		if err != nil {
 			t.Error(err)
 		}
 		fmt.Println("*** refresh realtime bar (1h): ", ohlcv)
 
-		bars, err := agg.GetOHLCVData(ctx, &GetOhlcvDataReq{
+		bars, err = agg.GetOHLCVData(ctx, &GetOhlcvDataReq{
 			Symbol:    "ETH-USDT",
 			Interval:  H_1,
 			StartTime: testing_start_time,
