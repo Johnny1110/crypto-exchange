@@ -739,7 +739,7 @@ package legacy
 //	closedBars := a.barManager.CloseExpiredBars(interval, openTime)
 //
 //	if len(closedBars) > 0 {
-//		if err := a.repo.SaveOHLCVBars(ctx, closedBars, interval); err != nil {
+//		if err := a.repo.UpsertOHLCVBars(ctx, closedBars, interval); err != nil {
 //			log.Errorf("Failed to save OHLCV bars: %v", err)
 //			a.metrics.IncrementErrors()
 //		} else {

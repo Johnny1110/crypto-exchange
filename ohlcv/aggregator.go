@@ -197,25 +197,24 @@ func (a *OHLCVAggregator) manageIntervalTimers(ctx context.Context) {
 
 // startIntervalTimer process interval (1h, 1d, 1w, ...), if reached close bar time, do closeIntervalBars()
 func (a *OHLCVAggregator) startIntervalTimer(ctx context.Context, interval OHLCV_INTERVAL, config IntervalConfig) {
-	// Calculate next interval boundary
-	now := time.Now()
-	nextBoundary := getNextBucketTime(now, config.Duration)
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
 
-	timer := time.NewTimer(time.Until(nextBoundary))
-	defer timer.Stop()
+	var lastClosedTimestamp int64
 
 	for {
 		select {
-		case <-timer.C:
-			a.closeIntervalBars(ctx, interval, nextBoundary.Add(-config.Duration).Unix())
-			// Set next timer
-			nextBoundary = nextBoundary.Add(config.Duration)
-			timer.Reset(time.Until(nextBoundary))
-
-		case <-ctx.Done():
-			return
-		case <-a.stopCh:
-			return
+		case now := <-ticker.C:
+			// calculate currentBucket timestamp
+			currentBucketTimestamp := getBucketUnixTime(now, config.Duration)
+			nextBucketTime := getNextBucketTime(now, config.Duration)
+			if now.After(nextBucketTime) || now.Equal(nextBucketTime) {
+				// close expired bucket.
+				if currentBucketTimestamp > lastClosedTimestamp {
+					a.closeIntervalBars(ctx, interval, currentBucketTimestamp)
+					lastClosedTimestamp = currentBucketTimestamp
+				}
+			}
 		}
 	}
 }
@@ -224,7 +223,7 @@ func (a *OHLCVAggregator) closeIntervalBars(ctx context.Context, interval OHLCV_
 	a.realtimeSymbolBars.Range(func(key, value interface{}) bool {
 		rsBars := value.(*RealtimeSymbolBars)
 		closedBars, err := rsBars.CloseBars(interval, openTime)
-		if err = a.repo.SaveOHLCVBars(ctx, closedBars, interval); err != nil {
+		if err = a.repo.UpsertOHLCVBars(ctx, closedBars, interval); err != nil {
 			log.Errorf("[OHLCVAggregator] Failed to save OHLCVBars: %v", err)
 		}
 		return true

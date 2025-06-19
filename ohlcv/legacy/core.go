@@ -414,7 +414,7 @@ package legacy
 //
 //func (a *OHLCVAggregator) closeIntervalBars(ctx context.Context, interval string, openTime int64) {
 //	closedBars := a.realtimeBarManager.closeIntervalBars(ctx, interval, openTime)
-//	if err := a.repo.SaveOHLCVBars(ctx, closedBars, interval); err != nil {
+//	if err := a.repo.UpsertOHLCVBars(ctx, closedBars, interval); err != nil {
 //		log.Errorf("[OHLCVAggregator] Failed to save OHLCVBars: %v", err)
 //	}
 //}

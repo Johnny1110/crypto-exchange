@@ -25,7 +25,7 @@ type Trade struct {
 
 type GetOhlcvDataReq struct {
 	Symbol    string
-	Interval  string
+	Interval  OHLCV_INTERVAL
 	StartTime time.Time
 	EndTime   time.Time
 	Limit     int // default 500, max 1000

@@ -2,7 +2,11 @@ package ohlcv
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"github.com/labstack/gommon/log"
+	_ "github.com/ncruces/go-sqlite3/driver"
+	_ "github.com/ncruces/go-sqlite3/embed"
 	"math/rand"
 	"testing"
 	"time"
@@ -12,7 +16,7 @@ import (
 type mockRepo struct {
 }
 
-func (m mockRepo) SaveOHLCVBar(ctx context.Context, bar *OHLCVBar, interval string) error {
+func (m mockRepo) SaveOHLCVBar(ctx context.Context, bar *OHLCVBar, interval OHLCV_INTERVAL) error {
 	return nil
 }
 
@@ -21,18 +25,24 @@ func (m mockRepo) GetOHLCVData(ctx context.Context, req *GetOhlcvDataReq) (*OHLC
 }
 
 func (m mockRepo) UpdateRealtimeOHLCV(ctx context.Context, bar OHLCVBar, interval OHLCV_INTERVAL) error {
+	log.Infof("* [Update] RealtimeOHLCV interval: %v, bar: %v", interval, bar)
 	return nil
 }
 
-func (m mockRepo) GetRealtimeOHLCV(ctx context.Context, symbol, interval string, openTime int64) (*OHLCVBar, error) {
+func (m mockRepo) GetRealtimeOHLCV(ctx context.Context, symbol, interval OHLCV_INTERVAL, openTime int64) (*OHLCVBar, error) {
 	return nil, nil
 }
 
-func (m mockRepo) UpdateStatistics(ctx context.Context, symbol, interval string, date time.Time, stats *ohlcvStatistics) error {
+func (m mockRepo) UpdateStatistics(ctx context.Context, symbol, interval OHLCV_INTERVAL, date time.Time, stats *ohlcvStatistics) error {
 	return nil
 }
 
-func (m mockRepo) SaveOHLCVBars(ctx context.Context, ohlcvBars []OHLCVBar, interval OHLCV_INTERVAL) error {
+func (m mockRepo) UpsertOHLCVBars(ctx context.Context, ohlcvBars []OHLCVBar, interval OHLCV_INTERVAL) error {
+	log.Infof("* [Save] OHLCVBars: interval: %v >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", interval)
+	for _, bar := range ohlcvBars {
+		log.Infof("OHLCVBars: %v", bar)
+	}
+	log.Infof("* [Save] OHLCVBars: interval: %v <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<", interval)
 	return nil
 }
 
@@ -107,6 +117,31 @@ func createMockStream() TradeStream {
 	return &mockStream{}
 }
 
+func mockAgg_with_SQLITE() (*OHLCVAggregator, error) {
+	db, err := sql.Open("sqlite3", "../app/exg.db")
+	if err != nil {
+		return nil, err
+	}
+
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+
+	// Test the connection
+	if err := db.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
+
+	repo := NewSQLiteOHLCVRepository(db)
+	stream := createMockStream()
+	return NewOHLCVAggregator(repo, stream, &AggregatorConfig{
+		BatchSize:      10,
+		FlushInterval:  3 * time.Second,
+		ChannelSize:    10,
+		MaxConcurrency: 2,
+		EnableMetrics:  false,
+	})
+}
+
 func mockAgg() (*OHLCVAggregator, error) {
 	repo := createMockRepo()
 	stream := createMockStream()
@@ -125,21 +160,81 @@ func Test_NewOHLCVAggregator(t *testing.T) {
 }
 
 func Test_Startup(t *testing.T) {
-	agg, _ := mockAgg()
+	agg, err := mockAgg_with_SQLITE()
+	if err != nil {
+		log.Errorf(err.Error())
+		panic(err)
+	}
 	ctx := context.Background()
-	err := agg.Start(ctx, []string{"ETH-USDT"})
+	err = agg.Start(ctx, []string{"ETH-USDT"})
 	assert(t, err == nil, true)
 	err = agg.AddSymbol("ETH-USDT", 2450, SupportedIntervals)
 	assert(t, err == nil, true)
 
-	for i := 0; i < 10; i++ {
-		time.Sleep(1 * time.Second)
+	testing_start_time := time.Now()
+
+	for i := 0; i < 1000; i++ {
+		time.Sleep(5 * time.Minute)
 
 		ohlcv, err := agg.GetRealtimeOHLCV(ctx, "ETH-USDT", H_1)
 		if err != nil {
 			t.Error(err)
 		}
-		fmt.Println("refresh bar: ", ohlcv)
+		fmt.Println("*** refresh realtime bar (1h): ", ohlcv)
+
+		bars, err := agg.GetOHLCVData(ctx, &GetOhlcvDataReq{
+			Symbol:    "ETH-USDT",
+			Interval:  H_1,
+			StartTime: testing_start_time,
+			EndTime:   time.Now(),
+		})
+
+		if err != nil {
+			t.Error(err)
+		}
+		fmt.Println("### refresh closed bar (1h)", bars)
+
+		// ------------------------------------------------------------------------------------------------
+
+		ohlcv, err = agg.GetRealtimeOHLCV(ctx, "ETH-USDT", D_1)
+		if err != nil {
+			t.Error(err)
+		}
+		fmt.Println("*** refresh realtime bar(1d): ", ohlcv)
+
+		bars, err = agg.GetOHLCVData(ctx, &GetOhlcvDataReq{
+			Symbol:    "ETH-USDT",
+			Interval:  D_1,
+			StartTime: testing_start_time,
+			EndTime:   time.Now(),
+		})
+
+		if err != nil {
+			t.Error(err)
+		}
+		fmt.Println("### refresh closed bar (1d)", bars)
+
+		// ------------------------------------------------------------------------------------------------
+
+		ohlcv, err = agg.GetRealtimeOHLCV(ctx, "ETH-USDT", W_1)
+		if err != nil {
+			t.Error(err)
+		}
+		fmt.Println("*** refresh realtime bar(1w): ", ohlcv)
+
+		bars, err = agg.GetOHLCVData(ctx, &GetOhlcvDataReq{
+			Symbol:    "ETH-USDT",
+			Interval:  W_1,
+			StartTime: testing_start_time,
+			EndTime:   time.Now(),
+		})
+
+		if err != nil {
+			t.Error(err)
+		}
+		fmt.Println("### refresh closed bar (1w)", bars)
+
+		fmt.Println("👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾")
 	}
 }
 
