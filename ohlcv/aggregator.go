@@ -228,17 +228,15 @@ func (a *OHLCVAggregator) startIntervalTimer(ctx context.Context, interval OHLCV
 func (a *OHLCVAggregator) findBucketToClose(now time.Time, interval time.Duration, lastClosedTimestamp int64) int64 {
 	currentBucket := getBucketTime(now, interval)
 
-	// 檢查前一個桶是否應該關閉
 	previousBucket := currentBucket.Add(-interval)
 	previousBucketEnd := previousBucket.Add(interval - 1*time.Second)
 
-	// 如果當前時間已經超過了前一個桶的結束時間，則應該關閉前一個桶
 	if (now.After(previousBucketEnd) || now.Equal(previousBucketEnd)) &&
 		previousBucket.Unix() > lastClosedTimestamp {
 		return previousBucket.Unix()
 	}
 
-	return 0 // 沒有需要關閉的桶
+	return 0
 }
 
 func (a *OHLCVAggregator) closeIntervalBars(ctx context.Context, interval OHLCV_INTERVAL, openTime int64) {
@@ -257,7 +255,7 @@ func (a *OHLCVAggregator) closeIntervalBars(ctx context.Context, interval OHLCV_
 // ==================== Periodic Tasks ====================
 
 func (a *OHLCVAggregator) periodicFlush(ctx context.Context) {
-	ticker := time.NewTicker(time.Minute * 5) // Flush every 5 minutes
+	ticker := time.NewTicker(time.Minute * 1) // Flush every 5 minutes
 	defer ticker.Stop()
 
 	for {

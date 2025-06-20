@@ -23,7 +23,7 @@ const (
 	DefaultBatchSize     = 100
 	MinBatchSize         = 10
 	MaxBatchSize         = 1000
-	DefaultFlushInterval = 5 * time.Second
+	DefaultFlushInterval = 1 * time.Second
 	MinFlushInterval     = time.Second
 	MaxFlushInterval     = time.Minute
 	DefaultChannelSize   = 1000
