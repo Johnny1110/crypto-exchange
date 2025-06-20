@@ -132,7 +132,7 @@ func (c *Container) initScheduler() {
 	c.MarketDataScheduler = scheduler.NewMarketDataScheduler(c.MarketDataService, c.CacheService, 30*time.Second)
 	c.OrderBookSnapshotScheduler = scheduler.NewOrderBookSnapshotScheduler(c.MatchingEngine, 300*time.Millisecond)
 	c.LQDTScheduler = scheduler.NewLQDTScheduler(c.AmmExFuncProxy, c.UserService, 5*time.Minute)
-	c.WSDataFeederScheduler = scheduler.NewWSDataFeederJob(c.WSHub, c.OHLCVAggregator, c.OrderBookService)
+	c.WSDataFeederScheduler = scheduler.NewWSDataFeederJob(c.WSHub, c.OHLCVAggregator, c.OrderBookService, c.MarketDataService)
 
 	schedulers := make([]scheduler.Scheduler, 0, 3)
 	schedulers = append(schedulers, c.MarketDataScheduler)

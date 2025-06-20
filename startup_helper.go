@@ -157,13 +157,14 @@ func startUpAllScheduler(c *container.Container) {
 }
 
 func setupWebSocket(c *container.Container) {
-	// 設置 HTTP 路由
-	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		ws.HandleWebSocket(c.WSHub, w, r)
-	})
+	go func() {
+		http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+			ws.HandleWebSocket(c.WSHub, w, r)
+		})
 
-	log.Info("WebSocket listen on :8081")
-	go log.Fatal(http.ListenAndServe(":8081", nil))
+		log.Info("WebSocket listen on :8081")
+		log.Fatal(http.ListenAndServe(":8081", nil))
+	}()
 }
 
 func getEthClient() (*ethclient.Client, error) {

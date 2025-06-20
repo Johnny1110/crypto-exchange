@@ -34,11 +34,12 @@ func NewClient(id string, conn *websocket.Conn, hub *Hub) *Client {
 func (c *Client) ReadPump() {
 	defer func() {
 		c.Hub.unregister <- c
-		c.Conn.Close()
 	}()
 
-	c.Conn.SetReadLimit(512)
-	c.Conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	c.Conn.SetReadLimit(512)                                 // setup read max limit is 512 bytes
+	c.Conn.SetReadDeadline(time.Now().Add(60 * time.Second)) // read timeout
+
+	// setup Pong Handler, execute when Pong
 	c.Conn.SetPongHandler(func(string) error {
 		c.Conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 		return nil
@@ -48,14 +49,15 @@ func (c *Client) ReadPump() {
 		_, message, err := c.Conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Infof("[WS] Client read message error: %v", err)
+				// if client closed, will be unregistered
+				log.Infof("[WS] Client disconnected, message: %v", err)
 			}
 			break
 		}
 
 		var req WSReq
 		if err := json.Unmarshal(message, &req); err != nil {
-			log.Infof("[WS] Client read message error: %v", err)
+			log.Warnf("[WS] Client read message error: %v", err)
 			continue
 		}
 
@@ -98,17 +100,18 @@ func (c *Client) handleUnsubscribe(req WSReq) {
 
 // WritePump send response to user
 func (c *Client) WritePump() {
-	ticker := time.NewTicker(54 * time.Second)
+	ticker := time.NewTicker(54 * time.Second) // ping ticker
 	defer func() {
 		ticker.Stop()
-		c.Conn.Close()
+		c.Hub.unregister <- c
 	}()
 
 	for {
 		select {
 		case message, ok := <-c.Send:
-			c.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			c.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second)) // write overtime 10 secs
 			if !ok {
+				// client.Send channel closed, notify user to close.
 				c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}

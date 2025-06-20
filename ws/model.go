@@ -9,6 +9,7 @@ type WSChannel string
 
 const OHLCV = WSChannel("ohlcv")
 const ORDERBOOK = WSChannel("orderbook")
+const MARKETS = WSChannel("markets")
 
 type WSAction string
 
@@ -54,6 +55,10 @@ func BuildSubscriptionKey(req WSReq) (SubscriptionKey, error) {
 	}
 
 	switch req.Channel {
+	case MARKETS:
+		return SubscriptionKey{
+			Channel: req.Channel,
+		}, nil
 	case OHLCV:
 		var params OHLCVReqParams
 		if err := json.Unmarshal(paramsBytes, &params); err != nil {

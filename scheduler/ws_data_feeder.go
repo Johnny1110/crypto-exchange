@@ -10,19 +10,22 @@ import (
 )
 
 type WSDataFeederJob struct {
-	wsHub            *ws.Hub
-	ohlcvAgg         *ohlcv.OHLCVAggregator
-	orderbookService service.IOrderBookService
+	wsHub             *ws.Hub
+	ohlcvAgg          *ohlcv.OHLCVAggregator
+	orderbookService  service.IOrderBookService
+	marketDataService service.IMarketDataService
 }
 
 func NewWSDataFeederJob(
 	wsHub *ws.Hub,
 	ohlcvAgg *ohlcv.OHLCVAggregator,
-	orderbookService service.IOrderBookService) Scheduler {
+	orderbookService service.IOrderBookService,
+	marketDataService service.IMarketDataService) Scheduler {
 	return &WSDataFeederJob{
-		wsHub:            wsHub,
-		ohlcvAgg:         ohlcvAgg,
-		orderbookService: orderbookService,
+		wsHub:             wsHub,
+		ohlcvAgg:          ohlcvAgg,
+		orderbookService:  orderbookService,
+		marketDataService: marketDataService,
 	}
 }
 
@@ -51,8 +54,16 @@ func (W *WSDataFeederJob) collectAndSend(key ws.SubscriptionKey) {
 	ctx := context.Background()
 
 	switch key.Channel {
+	case ws.MARKETS:
+		data, err := W.marketDataService.GetAllMarketData()
+		if err != nil {
+			log.Warnf("[WSDataFeederJob] get all markets error: %v", err)
+			return
+		}
+		W.wsHub.BroadcastToSubscribers(key, data)
+
 	case ws.OHLCV:
-		ohlcvWsParam := key.Params.(*ws.OHLCVReqParams)
+		ohlcvWsParam := key.Params.(ws.OHLCVReqParams)
 		symbol := ohlcvWsParam.Symbol
 		interval := ohlcv.OHLCV_INTERVAL(ohlcvWsParam.Interval)
 
@@ -64,7 +75,7 @@ func (W *WSDataFeederJob) collectAndSend(key ws.SubscriptionKey) {
 		W.wsHub.BroadcastToSubscribers(key, realtimeOHLCV)
 		return
 	case ws.ORDERBOOK:
-		obWsParam := key.Params.(*ws.OrderBookReqParams)
+		obWsParam := key.Params.(ws.OrderBookReqParams)
 		market := obWsParam.Market
 		snapshot, err := W.orderbookService.GetSnapshot(ctx, market)
 		if err != nil {

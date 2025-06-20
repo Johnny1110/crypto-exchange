@@ -76,6 +76,7 @@ func (h *Hub) Run(ctx context.Context) {
 						}
 					}
 				}
+				client.Conn.Close()
 			}
 
 			h.mu.Unlock()
@@ -140,7 +141,7 @@ func (h *Hub) BroadcastToSubscribers(key SubscriptionKey, data interface{}) {
 	}
 
 	h.mu.RLock()
-	log.Infof("[BroadcastToSubscribers] inputKey:%v", key)
+	log.Debugf("[BroadcastToSubscribers] inputKey:%v", key)
 	clients, ok := h.subscriptions[key]
 	h.mu.RUnlock()
 
