@@ -61,6 +61,7 @@ func setupRoutes(
 		public.GET("/orderbooks/:market/snapshot", orderBookController.OrderbooksSnapshot)
 		public.GET("/markets", marketDataController.GetAllMarketsData)
 		public.GET("/markets/:market", marketDataController.GetMarketsData)
+		public.GET("/markets/:market/ohlcv-history/:interval", marketDataController.GetOHLCVHistory)
 	}
 
 	// Auth router

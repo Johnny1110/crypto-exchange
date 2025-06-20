@@ -51,6 +51,13 @@ DOT-USDT
 <br>
 <br>
 
+## API
+
+* [WebSocket](ws)
+
+<br>
+<br>
+
 ## API Message Code
 
 message code

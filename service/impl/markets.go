@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/johnny1110/crypto-exchange/dto"
+	"github.com/johnny1110/crypto-exchange/ohlcv"
 	"github.com/johnny1110/crypto-exchange/repository"
 	"github.com/johnny1110/crypto-exchange/service"
 	"github.com/johnny1110/crypto-exchange/settings"
@@ -16,6 +17,7 @@ type MarketDataService struct {
 	db        *sql.DB
 	tradeRepo repository.ITradeRepository
 	cache     service.ICacheService
+	ohlcvAgg  *ohlcv.OHLCVAggregator
 }
 
 func (d *MarketDataService) GetAllMarketData() ([]dto.MarketData, error) {
@@ -46,8 +48,16 @@ func (d *MarketDataService) GetMarketData(market string) (dto.MarketData, error)
 	return dto.MarketData{}, fmt.Errorf("market %s data not found", market)
 }
 
-func NewMarketDataService(db *sql.DB, tradeRepo repository.ITradeRepository, cache service.ICacheService) service.IMarketDataService {
-	return &MarketDataService{db: db, tradeRepo: tradeRepo, cache: cache}
+func (d *MarketDataService) GetOHLCVHistory(ctx context.Context, req *ohlcv.GetOhlcvDataReq) (*ohlcv.OHLCV, error) {
+	return d.ohlcvAgg.GetOHLCVData(ctx, req)
+}
+
+func NewMarketDataService(
+	db *sql.DB,
+	tradeRepo repository.ITradeRepository,
+	cache service.ICacheService,
+	ohlcvAgg *ohlcv.OHLCVAggregator) service.IMarketDataService {
+	return &MarketDataService{db: db, tradeRepo: tradeRepo, cache: cache, ohlcvAgg: ohlcvAgg}
 }
 
 func (d *MarketDataService) CalculateMarketData(ctx context.Context, market string) (*dto.MarketData, error) {
