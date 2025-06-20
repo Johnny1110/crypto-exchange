@@ -8,9 +8,11 @@ import (
 	"github.com/johnny1110/crypto-exchange/container"
 	"github.com/johnny1110/crypto-exchange/dto"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
+	"github.com/johnny1110/crypto-exchange/ws"
 	"github.com/labstack/gommon/log"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -147,6 +149,21 @@ func startUpAllScheduler(c *container.Container) {
 	if err != nil {
 		panic(err)
 	}
+
+	err = c.WSDataFeederScheduler.Start()
+	if err != nil {
+		panic(err)
+	}
+}
+
+func setupWebSocket(c *container.Container) {
+	// 設置 HTTP 路由
+	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		ws.HandleWebSocket(c.WSHub, w, r)
+	})
+
+	log.Info("WebSocket listen on :8081")
+	go log.Fatal(http.ListenAndServe(":8081", nil))
 }
 
 func getEthClient() (*ethclient.Client, error) {

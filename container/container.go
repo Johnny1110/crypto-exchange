@@ -14,6 +14,7 @@ import (
 	"github.com/johnny1110/crypto-exchange/service/impl/amm"
 	"github.com/johnny1110/crypto-exchange/service/impl/metrics"
 	"github.com/johnny1110/crypto-exchange/settings"
+	"github.com/johnny1110/crypto-exchange/ws"
 	"log"
 	"net/http"
 	"time"
@@ -49,6 +50,7 @@ type Container struct {
 	MarketDataScheduler        scheduler.Scheduler
 	OrderBookSnapshotScheduler scheduler.Scheduler
 	LQDTScheduler              scheduler.Scheduler
+	WSDataFeederScheduler      scheduler.Scheduler
 
 	// Metrics
 	MetricsService *metrics.MetricService
@@ -60,6 +62,9 @@ type Container struct {
 	OHLCVAggregator       *ohlcv.OHLCVAggregator
 	OHLCVTradeStream      ohlcv.TradeStream
 	OHLCVAggregatorConfig *ohlcv.AggregatorConfig
+
+	// Websocket
+	WSHub *ws.Hub
 }
 
 // NewContainer do DI
@@ -80,6 +85,9 @@ func NewContainer(db *sql.DB, engine *core.MatchingEngine) *Container {
 
 	// init services
 	c.initServices()
+
+	// init websocket
+	c.initWS()
 
 	// init proxy()
 	c.initProxy()
@@ -124,6 +132,7 @@ func (c *Container) initScheduler() {
 	c.MarketDataScheduler = scheduler.NewMarketDataScheduler(c.MarketDataService, c.CacheService, 30*time.Second)
 	c.OrderBookSnapshotScheduler = scheduler.NewOrderBookSnapshotScheduler(c.MatchingEngine, 300*time.Millisecond)
 	c.LQDTScheduler = scheduler.NewLQDTScheduler(c.AmmExFuncProxy, c.UserService, 5*time.Minute)
+	c.WSDataFeederScheduler = scheduler.NewWSDataFeederJob(c.WSHub, c.OHLCVAggregator, c.OrderBookService)
 
 	schedulers := make([]scheduler.Scheduler, 0, 3)
 	schedulers = append(schedulers, c.MarketDataScheduler)
@@ -188,4 +197,11 @@ func (c *Container) initOHLCVAgg() {
 		log.Fatalf("[OHLCVAggregator] initOHLCVAgg start err: %v", err)
 		return
 	}
+}
+
+func (c *Container) initWS() {
+	hub := ws.NewHub()
+	c.WSHub = hub
+	ctx := context.Background()
+	go c.WSHub.Run(ctx)
 }

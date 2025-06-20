@@ -28,6 +28,7 @@ func main() {
 	defer c.Cleanup()
 
 	router := setupRouter(c)
+	setupWebSocket(c)
 
 	// Recover OrderBook from db data.
 	err = recoverOrderBook(c)
