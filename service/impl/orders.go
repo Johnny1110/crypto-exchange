@@ -8,6 +8,7 @@ import (
 	"github.com/johnny1110/crypto-exchange/dto"
 	"github.com/johnny1110/crypto-exchange/engine-v2/core"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
+	"github.com/johnny1110/crypto-exchange/ohlcv"
 	"github.com/johnny1110/crypto-exchange/repository"
 	"github.com/johnny1110/crypto-exchange/service"
 	"github.com/johnny1110/crypto-exchange/service/serviceHelper"
@@ -27,11 +28,12 @@ var (
 )
 
 type orderService struct {
-	db          *sql.DB
-	engine      *core.MatchingEngine
-	orderRepo   repository.IOrderRepository
-	tradeRepo   repository.ITradeRepository
-	balanceRepo repository.IBalanceRepository
+	db               *sql.DB
+	engine           *core.MatchingEngine
+	orderRepo        repository.IOrderRepository
+	tradeRepo        repository.ITradeRepository
+	balanceRepo      repository.IBalanceRepository
+	klineTradeStream ohlcv.TradeStream
 }
 
 func NewIOrderService(
@@ -39,13 +41,15 @@ func NewIOrderService(
 	engine *core.MatchingEngine,
 	orderRepo repository.IOrderRepository,
 	tradeRepo repository.ITradeRepository,
-	balanceRepo repository.IBalanceRepository) service.IOrderService {
+	balanceRepo repository.IBalanceRepository,
+	klineTradeStream ohlcv.TradeStream) service.IOrderService {
 	return &orderService{
-		db:          db,
-		engine:      engine,
-		orderRepo:   orderRepo,
-		tradeRepo:   tradeRepo,
-		balanceRepo: balanceRepo,
+		db:               db,
+		engine:           engine,
+		orderRepo:        orderRepo,
+		tradeRepo:        tradeRepo,
+		balanceRepo:      balanceRepo,
+		klineTradeStream: klineTradeStream,
 	}
 }
 
@@ -175,11 +179,20 @@ func (s *orderService) executeOrderPlacementPhase(ctx context.Context, orderCtx 
 		// 4. Update order status from engine result
 		orderCtx.SyncTradeResult(engineOrder, trades)
 
-		// 5. Save trade records (TODO: async to TradeService to make kines)
+		// 5. Save trade records (async to TradeService to make kines)
 		if len(orderCtx.Trades) > 0 {
 			if err := s.tradeRepo.BatchInsert(ctx, tx, trades); err != nil {
 				log.Errorf("[executeOrderPlacementPhase] BatchInsert Trades error : %v", err)
 				return UnknownError
+			}
+
+			for _, trade := range trades {
+				s.klineTradeStream.SyncTrade(&ohlcv.Trade{
+					Symbol:    trade.Market,
+					Price:     trade.Price,
+					Volume:    trade.Size,
+					Timestamp: trade.Timestamp,
+				})
 			}
 		}
 

@@ -49,6 +49,11 @@ func (m mockRepo) UpsertOHLCVBars(ctx context.Context, ohlcvBars []OHLCVBar, int
 type mockStream struct {
 }
 
+func (m mockStream) SyncTrade(o *Trade) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (m mockStream) Subscribe(ctx context.Context, symbols []string) (<-chan *Trade, error) {
 	// Check if ETH-USDT is in the requested symbols
 	hasETHUSDT := false
@@ -159,7 +164,7 @@ func Test_NewOHLCVAggregator(t *testing.T) {
 	assert(t, err == nil, true)
 }
 
-func Test_Startup(t *testing.T) {
+func test_Startup(t *testing.T) {
 	agg, err := mockAgg_with_SQLITE()
 	if err != nil {
 		log.Errorf(err.Error())

@@ -8,6 +8,7 @@ import (
 type TradeStream interface {
 	Subscribe(ctx context.Context, symbols []string) (<-chan *Trade, error)
 	Close() error
+	SyncTrade(o *Trade)
 }
 
 // ==================== Repository ====================
