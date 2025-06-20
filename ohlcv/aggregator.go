@@ -255,7 +255,7 @@ func (a *OHLCVAggregator) closeIntervalBars(ctx context.Context, interval OHLCV_
 // ==================== Periodic Tasks ====================
 
 func (a *OHLCVAggregator) periodicFlush(ctx context.Context) {
-	ticker := time.NewTicker(time.Minute * 1) // Flush every 5 minutes
+	ticker := time.NewTicker(time.Minute * 1) // Flush every 1 minutes
 	defer ticker.Stop()
 
 	for {

@@ -167,7 +167,7 @@ func (c *Container) initOHLCVAgg() {
 	for _, symbol := range settings.ALL_MARKETS {
 		initPrice := 0.001
 		if ob, err := c.MatchingEngine.GetOrderBook(symbol.Name); err == nil {
-			initPrice = ob.LatestPrice()
+			initPrice = max(ob.LatestPrice(), initPrice)
 		}
 
 		err := c.OHLCVAggregator.AddSymbol(
