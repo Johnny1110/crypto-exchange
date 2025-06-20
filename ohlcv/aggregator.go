@@ -314,3 +314,19 @@ func (a *OHLCVAggregator) GetRealtimeOHLCV(ctx context.Context, symbol string, i
 		return OHLCVBar{}, fmt.Errorf("realtime OHLCV bar not found for symbol: %v", symbol)
 	}
 }
+
+func (a *OHLCVAggregator) GetRealtimeOHLCVData(ctx context.Context, symbol string, interval OHLCV_INTERVAL) (*OHLCV, error) {
+	ohlcvBar, err := a.GetRealtimeOHLCV(ctx, symbol, interval)
+	if err != nil {
+		return nil, err
+	}
+	return &OHLCV{
+		S: "ok",
+		T: []int64{ohlcvBar.OpenTime},
+		O: []float64{ohlcvBar.OpenPrice},
+		H: []float64{ohlcvBar.HighPrice},
+		L: []float64{ohlcvBar.LowPrice},
+		C: []float64{ohlcvBar.ClosePrice},
+		V: []float64{ohlcvBar.Volume},
+	}, nil
+}

@@ -67,7 +67,7 @@ func (W *WSDataFeederJob) collectAndSend(key ws.SubscriptionKey) {
 		symbol := ohlcvWsParam.Symbol
 		interval := ohlcv.OHLCV_INTERVAL(ohlcvWsParam.Interval)
 
-		realtimeOHLCV, err := W.ohlcvAgg.GetRealtimeOHLCV(ctx, symbol, interval)
+		realtimeOHLCV, err := W.ohlcvAgg.GetRealtimeOHLCVData(ctx, symbol, interval)
 		if err != nil {
 			log.Warnf("[WSDataFeederJob] get realtime ohlcv error: %v", err)
 			return

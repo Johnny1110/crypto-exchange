@@ -115,7 +115,7 @@ func (c *Container) initServices() {
 	c.OrderBookService = serviceImpl.NewIOrderBookService(c.MatchingEngine)
 	c.AdminService = serviceImpl.NewIAdminService(c.DB, c.UserRepo, c.BalanceRepo, c.OrderService)
 	c.CacheService = serviceImpl.NewCacheService()
-	c.MarketDataService = serviceImpl.NewMarketDataService(c.DB, c.TradeRepo, c.CacheService)
+	c.MarketDataService = serviceImpl.NewMarketDataService(c.DB, c.TradeRepo, c.CacheService, c.OHLCVAggregator)
 	c.BalanceService = serviceImpl.NewIBalanceService(c.DB, c.UserRepo, c.BalanceRepo, c.MarketDataService)
 }
 

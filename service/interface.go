@@ -6,6 +6,7 @@ import (
 	"github.com/johnny1110/crypto-exchange/engine-v2/book"
 	"github.com/johnny1110/crypto-exchange/engine-v2/market"
 	"github.com/johnny1110/crypto-exchange/engine-v2/model"
+	"github.com/johnny1110/crypto-exchange/ohlcv"
 )
 
 type ICacheService interface {
@@ -59,4 +60,5 @@ type IMarketDataService interface {
 	CalculateMarketData(ctx context.Context, market string) (*dto.MarketData, error)
 	GetAllMarketData() ([]dto.MarketData, error)
 	GetMarketData(market string) (dto.MarketData, error)
+	GetOHLCVHistory(ctx context.Context, req *ohlcv.GetOhlcvDataReq) (*ohlcv.OHLCV, error)
 }

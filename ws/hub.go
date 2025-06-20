@@ -153,11 +153,7 @@ func (h *Hub) BroadcastToSubscribers(key SubscriptionKey, data interface{}) {
 		select {
 		case client.Send <- message:
 		default:
-			close(client.Send)
-			h.mu.Lock()
-			delete(h.clients, client)
-			delete(clients, client)
-			h.mu.Unlock()
+			h.unregister <- client
 		}
 	}
 }

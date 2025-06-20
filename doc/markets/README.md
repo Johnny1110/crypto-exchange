@@ -76,3 +76,60 @@ Response-Body:
   }
 }
 ```
+
+## Get Market OHLCV History Data
+
+OHLCV Data for TradingView
+
+URI: `/api/v1/markets/{market}/ohlcv-history/{interval}`
+
+Method: GET
+
+Path-Param:
+```
+market: string (e.g. ETH-USDT, BTC-USDT, DOT-USDT)
+interval: string (e.g. 15m, 1h, 1d, 1w)
+```
+
+<br>
+
+Request-Param:
+
+```
+start_time: timestamp (optional default: half year ago)
+end_time: timestamp (optional default: now)
+limit: number (optional default: 500)
+```
+
+<br>
+
+Response-Body:
+
+```json
+{
+  "code": "0000000",
+  "message": "success",
+  "timestamp": 1750441473348,
+  "data": {
+    "s": "ok",
+    "t": [
+      1750392000
+    ],
+    "o": [
+      0
+    ],
+    "h": [
+      2600
+    ],
+    "l": [
+      0
+    ],
+    "c": [
+      2520.35
+    ],
+    "v": [
+      0.46883140467364887
+    ]
+  }
+}
+```
