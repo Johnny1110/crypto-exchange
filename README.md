@@ -42,6 +42,7 @@ $> node node_modules/.bin/ganache
 * Database
 
     * [Schema](doc/db_schema/schema.sql)
+    * [ohlcv Schema](doc/db_schema/ohlcv/sqlite_light_weight.sql)
     * [Testing Data](doc/db_schema/testing_data.sql)
 
 <br>
