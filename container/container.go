@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"github.com/johnny1110/crypto-exchange/engine-v2/core"
+	"github.com/johnny1110/crypto-exchange/external"
 	"github.com/johnny1110/crypto-exchange/ohlcv"
 	"github.com/johnny1110/crypto-exchange/repository"
 	repositoryImpl "github.com/johnny1110/crypto-exchange/repository/impl"
@@ -174,12 +175,13 @@ func (c *Container) initOHLCVAgg() {
 
 	allSymbolNames := make([]string, 0, len(settings.ALL_MARKETS))
 	for _, symbol := range settings.ALL_MARKETS {
-		initPrice := 0.001
-		if ob, err := c.MatchingEngine.GetOrderBook(symbol.Name); err == nil {
-			initPrice = max(ob.LatestPrice(), initPrice)
+		initPrice, err := external.GetIndexPrice(ctx, symbol.QuoteAsset)
+		if err != nil {
+			log.Printf("[OHLCVAggregator] initOHLCVAgg GetIndexPrice err: %v", err)
+			initPrice = 0.01
 		}
 
-		err := c.OHLCVAggregator.AddSymbol(
+		err = c.OHLCVAggregator.AddSymbol(
 			symbol.Name,
 			initPrice,
 			ohlcv.SupportedIntervals,
