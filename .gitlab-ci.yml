@@ -6,7 +6,7 @@ stages:
         - main # 僅限 main 分支才做
     image: golang:latest # 各 job 基底 image
     tags:
-      - crpto-runner
+      - crypto-runner
     before_script:
         - ls
     interruptible: true # 如果有新的流水線產生，馬上中斷
