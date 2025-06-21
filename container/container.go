@@ -175,7 +175,7 @@ func (c *Container) initOHLCVAgg() {
 
 	allSymbolNames := make([]string, 0, len(settings.ALL_MARKETS))
 	for _, symbol := range settings.ALL_MARKETS {
-		initPrice, err := external.GetIndexPrice(ctx, symbol.QuoteAsset)
+		initPrice, err := external.GetIndexPrice(ctx, symbol.Name)
 		if err != nil {
 			log.Printf("[OHLCVAggregator] initOHLCVAgg GetIndexPrice err: %v", err)
 			initPrice = 0.01
